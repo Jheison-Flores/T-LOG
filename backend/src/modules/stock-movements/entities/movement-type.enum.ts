@@ -1,0 +1,11 @@
+export enum MovementType {
+  ENTRY = 'ENTRY',
+
+  OUTPUT = 'OUTPUT',
+
+  TRANSFER = 'TRANSFER',
+
+  ADJUSTMENT_IN = 'ADJUSTMENT_IN',
+
+  ADJUSTMENT_OUT = 'ADJUSTMENT_OUT',
+}

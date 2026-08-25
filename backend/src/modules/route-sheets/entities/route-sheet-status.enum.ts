@@ -1,0 +1,5 @@
+export enum RouteSheetStatus {
+  CONFORMING = 'CONFORMING',
+
+  WITH_OBSERVATIONS = 'WITH_OBSERVATIONS',
+}
