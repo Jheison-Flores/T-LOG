@@ -3,6 +3,7 @@ import {
   IsArray,
   IsEnum,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Min,
@@ -14,18 +15,54 @@ import { Type } from 'class-transformer';
 import { MovementType } from '../entities/movement-type.enum';
 
 export class BatchStockMovementDetailDto {
+  // ============================================================
+  // PRODUCTO
+  // ============================================================
+
   @IsInt()
   @Min(1)
   productId!: number;
 
+  // ============================================================
+  // CANTIDAD
+  // ============================================================
+
   @IsInt()
   @Min(1)
   quantity!: number;
+
+  // ============================================================
+  // PRECIO UNITARIO
+  //
+  // Opcional e independiente por cada producto.
+  //
+  // Esto permite registrar una entrada múltiple donde:
+  //
+  // Producto A = S/ 10.50
+  // Producto B = S/ 22.00
+  // Producto C = sin precio
+  // ============================================================
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({
+    maxDecimalPlaces: 4,
+  })
+  @Min(0)
+  unitCost?: number;
 }
 
 export class CreateBatchStockMovementDto {
+  // ============================================================
+  // TIPO
+  // ============================================================
+
   @IsEnum(MovementType)
   movementType!: MovementType;
+
+  // ============================================================
+  // DETALLES
+  // ============================================================
 
   @IsArray()
   @ArrayMinSize(1)
@@ -35,13 +72,19 @@ export class CreateBatchStockMovementDto {
   @Type(() => BatchStockMovementDetailDto)
   details!: BatchStockMovementDetailDto[];
 
-  // Entrada / Salida / Ajustes
+  // ============================================================
+  // ENTRADA / SALIDA / AJUSTES
+  // ============================================================
+
   @IsOptional()
   @IsInt()
   @Min(1)
   warehouseId?: number;
 
-  // Transferencia
+  // ============================================================
+  // TRANSFERENCIA
+  // ============================================================
+
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -52,7 +95,10 @@ export class CreateBatchStockMovementDto {
   @Min(1)
   destinationWarehouseId?: number;
 
-  // Información adicional común para todos los productos
+  // ============================================================
+  // INFORMACIÓN ADICIONAL COMÚN
+  // ============================================================
+
   @IsOptional()
   @IsString()
   reason?: string;

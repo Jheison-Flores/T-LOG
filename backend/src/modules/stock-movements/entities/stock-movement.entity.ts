@@ -8,9 +8,7 @@ import {
 } from 'typeorm';
 
 import { Inventory } from '../../inventory/entities/inventory.entity';
-
 import { User } from '../../users/entities/user.entity';
-
 import { MovementType } from './movement-type.enum';
 
 @Entity('stock_movements')
@@ -62,6 +60,26 @@ export class StockMovement {
     type: 'integer',
   })
   quantity!: number;
+
+  // ============================================================
+  // VALORIZACIÓN
+  // ============================================================
+
+  @Column('decimal', {
+    name: 'unit_cost',
+    precision: 14,
+    scale: 4,
+    nullable: true,
+  })
+  unitCost?: number | null;
+
+  @Column('decimal', {
+    name: 'total_cost',
+    precision: 14,
+    scale: 2,
+    nullable: true,
+  })
+  totalCost?: number | null;
 
   // ============================================================
   // MOTIVO

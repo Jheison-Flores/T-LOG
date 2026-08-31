@@ -234,6 +234,8 @@ export class StockMovementsService {
 
           quantity: detail.quantity,
 
+          unitCost: detail.unitCost,
+
           warehouseId: dto.warehouseId,
 
           sourceWarehouseId: dto.sourceWarehouseId,
@@ -299,6 +301,98 @@ export class StockMovementsService {
       default:
         throw new BadRequestException('Tipo de movimiento no válido.');
     }
+  }
+
+  // ============================================================
+  // VALORIZACIÓN
+  // ============================================================
+
+  private normalizeUnitCost(value: unknown): number | null {
+    if (value === undefined || value === null || value === '') {
+      return null;
+    }
+
+    const unitCost = Number(value);
+
+    if (!Number.isFinite(unitCost) || unitCost < 0) {
+      throw new BadRequestException(
+        'El precio unitario debe ser un número mayor o igual a cero.',
+      );
+    }
+
+    return Number(unitCost.toFixed(4));
+  }
+
+  private calculateTotalCost(
+    quantity: number,
+    unitCost: number | null,
+  ): number | null {
+    if (unitCost === null) {
+      return null;
+    }
+
+    return Number((quantity * unitCost).toFixed(2));
+  }
+
+  // ============================================================
+  // ÚLTIMO COSTO CONOCIDO EN INVENTARIO
+  //
+  // Busca el último movimiento valorizado que haya INGRESADO
+  // el producto al almacén indicado.
+  //
+  // Puede provenir de:
+  // - ENTRY
+  // - TRANSFER recibida
+  // - ADJUSTMENT_IN
+  //
+  // Si nunca existió un movimiento valorizado:
+  // devuelve null.
+  // ============================================================
+
+  async getLatestInventoryUnitCost(
+    manager: EntityManager,
+    productId: number,
+    warehouseId: number,
+  ): Promise<number | null> {
+    const movement = await manager
+      .getRepository(StockMovement)
+      .createQueryBuilder('movement')
+      .innerJoin('movement.destinationInventory', 'destinationInventory')
+      .innerJoin('destinationInventory.product', 'product')
+      .innerJoin('destinationInventory.warehouse', 'warehouse')
+      .where('product.id = :productId', {
+        productId,
+      })
+      .andWhere('warehouse.id = :warehouseId', {
+        warehouseId,
+      })
+      .andWhere('movement.unitCost IS NOT NULL')
+      .andWhere('movement.movementType IN (:...movementTypes)', {
+        movementTypes: [
+          MovementType.ENTRY,
+          MovementType.TRANSFER,
+          MovementType.ADJUSTMENT_IN,
+        ],
+      })
+      .orderBy('movement.createdAt', 'DESC')
+      .addOrderBy('movement.id', 'DESC')
+      .getOne();
+
+    if (
+      !movement ||
+      movement.unitCost === null ||
+      movement.unitCost === undefined
+    ) {
+      return null;
+    }
+
+    const unitCost = Number(movement.unitCost);
+
+    if (!Number.isFinite(unitCost) || unitCost < 0) {
+      return null;
+    }
+
+    return unitCost;
   }
 
   // ============================================================
@@ -505,6 +599,10 @@ export class StockMovementsService {
       });
     }
 
+    const unitCost = this.normalizeUnitCost(dto.unitCost);
+
+    const totalCost = this.calculateTotalCost(dto.quantity, unitCost);
+
     inventory.quantity += dto.quantity;
 
     await manager.save(Inventory, inventory);
@@ -513,6 +611,10 @@ export class StockMovementsService {
       movementType: dto.movementType,
 
       quantity: dto.quantity,
+
+      unitCost,
+
+      totalCost,
 
       reason: dto.reason,
 
@@ -568,6 +670,14 @@ export class StockMovementsService {
       );
     }
 
+    const unitCost = await this.getLatestInventoryUnitCost(
+      manager,
+      dto.productId,
+      dto.warehouseId,
+    );
+
+    const totalCost = this.calculateTotalCost(dto.quantity, unitCost);
+
     inventory.quantity -= dto.quantity;
 
     await manager.save(Inventory, inventory);
@@ -576,6 +686,10 @@ export class StockMovementsService {
       movementType: dto.movementType,
 
       quantity: dto.quantity,
+
+      unitCost,
+
+      totalCost,
 
       reason: dto.reason,
 
@@ -637,9 +751,29 @@ export class StockMovementsService {
       );
     }
 
+    // ==========================================================
+    // TOMAR COSTO DEL INVENTARIO DE ORIGEN
+    // ==========================================================
+
+    const unitCost = await this.getLatestInventoryUnitCost(
+      manager,
+      dto.productId,
+      dto.sourceWarehouseId,
+    );
+
+    const totalCost = this.calculateTotalCost(dto.quantity, unitCost);
+
+    // ==========================================================
+    // DESCONTAR ORIGEN
+    // ==========================================================
+
     sourceInventory.quantity -= dto.quantity;
 
     await manager.save(Inventory, sourceInventory);
+
+    // ==========================================================
+    // INVENTARIO DESTINO
+    // ==========================================================
 
     let destinationInventory = await manager.findOne(Inventory, {
       where: {
@@ -694,10 +828,18 @@ export class StockMovementsService {
 
     await manager.save(Inventory, destinationInventory);
 
+    // ==========================================================
+    // REGISTRAR TRANSFERENCIA VALORIZADA
+    // ==========================================================
+
     const movement = manager.create(StockMovement, {
       movementType: dto.movementType,
 
       quantity: dto.quantity,
+
+      unitCost,
+
+      totalCost,
 
       reason: dto.reason,
 
@@ -777,6 +919,10 @@ export class StockMovementsService {
       });
     }
 
+    const unitCost = this.normalizeUnitCost(dto.unitCost);
+
+    const totalCost = this.calculateTotalCost(dto.quantity, unitCost);
+
     inventory.quantity += dto.quantity;
 
     await manager.save(Inventory, inventory);
@@ -785,6 +931,10 @@ export class StockMovementsService {
       movementType: dto.movementType,
 
       quantity: dto.quantity,
+
+      unitCost,
+
+      totalCost,
 
       reason: dto.reason,
 
@@ -840,6 +990,14 @@ export class StockMovementsService {
       );
     }
 
+    const unitCost = await this.getLatestInventoryUnitCost(
+      manager,
+      dto.productId,
+      dto.warehouseId,
+    );
+
+    const totalCost = this.calculateTotalCost(dto.quantity, unitCost);
+
     inventory.quantity -= dto.quantity;
 
     await manager.save(Inventory, inventory);
@@ -848,6 +1006,10 @@ export class StockMovementsService {
       movementType: dto.movementType,
 
       quantity: dto.quantity,
+
+      unitCost,
+
+      totalCost,
 
       reason: dto.reason,
 
