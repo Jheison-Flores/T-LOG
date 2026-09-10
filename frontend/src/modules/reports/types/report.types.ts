@@ -1,4 +1,11 @@
-export type ReportGroupBy = "day" | "fortnight" | "month";
+export type CostCurrency =
+  | "PEN"
+  | "USD";
+
+export type ReportGroupBy =
+  | "day"
+  | "fortnight"
+  | "month";
 
 export interface MaterialDispatchFilters {
   from?: string;
@@ -10,70 +17,43 @@ export interface MaterialDispatchFilters {
 }
 
 export interface ReportSummary {
-  totalAmount: number;
-  guideCount: number;
-  totalQuantity: number;
-  detailCount: number;
+  totalPEN: number;
+  totalUSD: number;
   pricedItemCount: number;
-  unpricedItemCount: number;
-  coveragePercentage: number;
-}
-
-export interface WarehouseReportItem {
-  warehouseId: number;
-  warehouseCode: string;
-  warehouseName: string;
-  guideCount: number;
-  detailCount: number;
-  totalQuantity: number;
-  totalAmount: number;
   unpricedItemCount: number;
 }
 
 export interface CategoryReportItem {
   categoryId: number | null;
   categoryName: string;
-  detailCount: number;
-  totalQuantity: number;
-  totalAmount: number;
-  unpricedItemCount: number;
+  totalPEN: number;
+  totalUSD: number;
 }
 
-export interface ProductReportItem {
+export interface MaterialReportItem {
+  detailId: number;
   productId: number;
   internalCode: string;
   sku: string;
   productName: string;
-  unit: string;
   categoryName: string;
-  totalQuantity: number;
-  totalAmount: number;
-  dispatchCount: number;
-  unpricedDispatchCount: number;
+  unit: string;
+  quantity: number;
+  currency: CostCurrency | null;
+  unitCost: number | null;
+  totalAmount: number | null;
 }
 
-export interface TrendReportItem {
-  key: string;
-  label: string;
-  totalAmount: number;
-  totalQuantity: number;
-  guideCount: number;
-  unpricedItemCount: number;
+export interface FilterOption {
+  id: number;
+  name: string;
+  code?: string;
 }
 
-export interface GuideReportItem {
-  guideId: number;
-  fullNumber: string;
-  transferStartDate: string;
-  issueDate: string;
-  requestNumber: string;
-  destinationWarehouseId: number;
-  destinationWarehouseCode: string;
-  destinationWarehouseName: string;
-  detailCount: number;
-  totalQuantity: number;
-  totalAmount: number;
-  unpricedItemCount: number;
+export interface MaterialDispatchFilterOptions {
+  warehouses: FilterOption[];
+  categories: FilterOption[];
+  products: FilterOption[];
 }
 
 export interface MaterialDispatchReport {
@@ -85,22 +65,10 @@ export interface MaterialDispatchReport {
     productId: number | null;
     groupBy: ReportGroupBy;
   };
+
   summary: ReportSummary;
-  byWarehouse: WarehouseReportItem[];
+
   byCategory: CategoryReportItem[];
-  byProduct: ProductReportItem[];
-  trend: TrendReportItem[];
-  guides: GuideReportItem[];
-}
 
-export interface ReportFilterOption {
-  id: number;
-  name: string;
-  code?: string;
-}
-
-export interface MaterialDispatchFilterOptions {
-  warehouses: ReportFilterOption[];
-  categories: ReportFilterOption[];
-  products: ReportFilterOption[];
+  materials: MaterialReportItem[];
 }
