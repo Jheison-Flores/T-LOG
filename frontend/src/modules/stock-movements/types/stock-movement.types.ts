@@ -5,6 +5,10 @@ export type MovementType =
   | "ADJUSTMENT_IN"
   | "ADJUSTMENT_OUT";
 
+export type CostCurrency =
+  | "PEN"
+  | "USD";
+
 export interface MovementProduct {
   id: number;
   sku?: string;
@@ -38,6 +42,9 @@ export interface StockMovement {
   id: number;
   movementType: MovementType;
   quantity: number;
+  unitCost?: number | string | null;
+  totalCost?: number | string | null;
+  currency?: CostCurrency | null;
   reason?: string;
   reference?: string;
   sourceInventory?: StockMovementInventory;
@@ -50,6 +57,8 @@ export interface CreateStockMovementDto {
   movementType: MovementType;
   productId: number;
   quantity: number;
+  unitCost?: number;
+  currency?: CostCurrency;
   warehouseId?: number;
   sourceWarehouseId?: number;
   destinationWarehouseId?: number;
@@ -60,6 +69,8 @@ export interface CreateStockMovementDto {
 export interface CreateBatchStockMovementDetailDto {
   productId: number;
   quantity: number;
+  unitCost?: number;
+  currency?: CostCurrency;
 }
 
 export interface CreateBatchStockMovementDto {

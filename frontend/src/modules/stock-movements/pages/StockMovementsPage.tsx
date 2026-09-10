@@ -44,6 +44,32 @@ const movementStyles: Record<
     "bg-orange-100 text-orange-700",
 };
 
+function formatMoney(
+  value: number | string | null | undefined,
+  currency: "PEN" | "USD" | null | undefined,
+) {
+  if (
+    value === null ||
+    value === undefined ||
+    !currency
+  ) {
+    return "—";
+  }
+
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount)) {
+    return "—";
+  }
+
+  const symbol = currency === "USD" ? "US$" : "S/";
+
+  return `${symbol} ${amount.toLocaleString("es-PE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 export function StockMovementsPage() {
   const {
     data: movements = [],
@@ -353,6 +379,14 @@ export function StockMovementsPage() {
                     Cantidad
                   </th>
 
+                  <th className="text-right px-5 py-4 font-semibold text-gray-600">
+                    P. unitario
+                  </th>
+
+                  <th className="text-right px-5 py-4 font-semibold text-gray-600">
+                    Total
+                  </th>
+
                   <th className="text-left px-5 py-4 font-semibold text-gray-600">
                     Usuario
                   </th>
@@ -493,6 +527,28 @@ export function StockMovementsPage() {
                             </span>
                           )}
 
+                        </td>
+
+                        {/* PRECIO UNITARIO */}
+
+                        <td className="px-5 py-4 text-right whitespace-nowrap">
+                          <span className="font-medium text-gray-700">
+                            {formatMoney(
+                              movement.unitCost,
+                              movement.currency,
+                            )}
+                          </span>
+                        </td>
+
+                        {/* TOTAL VALORIZADO */}
+
+                        <td className="px-5 py-4 text-right whitespace-nowrap">
+                          <span className="font-semibold text-gray-900">
+                            {formatMoney(
+                              movement.totalCost,
+                              movement.currency,
+                            )}
+                          </span>
                         </td>
 
                         {/* USUARIO */}
@@ -646,6 +702,36 @@ export function StockMovementsPage() {
                     {selectedMovement.quantity}
                   </p>
 
+                </div>
+
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+
+                <div>
+                  <p className="text-xs text-gray-500">
+                    Precio unitario
+                  </p>
+
+                  <p className="font-semibold mt-1">
+                    {formatMoney(
+                      selectedMovement.unitCost,
+                      selectedMovement.currency,
+                    )}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-500">
+                    Valor total
+                  </p>
+
+                  <p className="font-semibold mt-1">
+                    {formatMoney(
+                      selectedMovement.totalCost,
+                      selectedMovement.currency,
+                    )}
+                  </p>
                 </div>
 
               </div>

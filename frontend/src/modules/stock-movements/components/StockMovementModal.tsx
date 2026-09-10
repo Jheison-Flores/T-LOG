@@ -51,6 +51,8 @@ interface MovementLine {
   id: number;
   productId: number;
   quantity: number;
+  unitCost?: number;
+  currency?: "PEN" | "USD";
 }
 
 let lineSequence =
@@ -69,6 +71,12 @@ function createEmptyLine(): MovementLine {
 
     quantity:
       1,
+
+    unitCost:
+      undefined,
+
+    currency:
+      undefined,
   };
 }
 
@@ -173,6 +181,12 @@ export function StockMovementModal({
 
         quantity:
           1,
+
+        unitCost:
+          undefined,
+
+        currency:
+          undefined,
       },
     ]);
 
@@ -228,6 +242,12 @@ export function StockMovementModal({
 
           quantity:
             1,
+
+          unitCost:
+            undefined,
+
+          currency:
+            undefined,
         },
       ]);
 
@@ -358,6 +378,12 @@ export function StockMovementModal({
     movementType ===
       "ADJUSTMENT_OUT";
 
+  const allowsUnitCost =
+    movementType ===
+      "ENTRY" ||
+    movementType ===
+      "ADJUSTMENT_IN";
+
   // ============================================================
   // CAMBIO DE TIPO
   // ============================================================
@@ -382,6 +408,20 @@ export function StockMovementModal({
       setDestinationWarehouseId(
         undefined,
       );
+
+      const nextAllowsUnitCost =
+        value === "ENTRY" ||
+        value === "ADJUSTMENT_IN";
+
+      if (!nextAllowsUnitCost) {
+        setLines((current) =>
+          current.map((line) => ({
+            ...line,
+            unitCost: undefined,
+            currency: undefined,
+          })),
+        );
+      }
 
       setError(
         "",
@@ -499,6 +539,55 @@ export function StockMovementModal({
       );
     };
 
+  const updateUnitCost =
+    (
+      lineId: number,
+      value: string,
+    ) => {
+      setLines((current) =>
+        current.map((line) => {
+          if (line.id !== lineId) {
+            return line;
+          }
+
+          if (value === "") {
+            return {
+              ...line,
+              unitCost: undefined,
+              currency: undefined,
+            };
+          }
+
+          return {
+            ...line,
+            unitCost: Number(value),
+            currency: line.currency ?? "PEN",
+          };
+        }),
+      );
+
+      setError("");
+    };
+
+  const updateCurrency =
+    (
+      lineId: number,
+      currency: "PEN" | "USD",
+    ) => {
+      setLines((current) =>
+        current.map((line) =>
+          line.id === lineId
+            ? {
+                ...line,
+                currency,
+              }
+            : line,
+        ),
+      );
+
+      setError("");
+    };
+
   // ============================================================
   // VALIDACIÓN
   // ============================================================
@@ -559,6 +648,25 @@ export function StockMovementModal({
         invalidQuantity
       ) {
         return "Todas las cantidades deben ser mayores que cero.";
+      }
+
+      if (allowsUnitCost) {
+        for (const line of lines) {
+          if (line.unitCost === undefined) {
+            continue;
+          }
+
+          if (
+            !Number.isFinite(line.unitCost) ||
+            line.unitCost < 0
+          ) {
+            return "El precio unitario debe ser mayor o igual a cero.";
+          }
+
+          if (!line.currency) {
+            return "Selecciona la moneda de todos los productos que tengan precio.";
+          }
+        }
       }
 
       if (
@@ -674,6 +782,17 @@ export function StockMovementModal({
                   Number(
                     line.quantity,
                   ),
+
+                unitCost:
+                  allowsUnitCost
+                    ? line.unitCost
+                    : undefined,
+
+                currency:
+                  allowsUnitCost &&
+                  line.unitCost !== undefined
+                    ? line.currency
+                    : undefined,
               }),
             ),
 
@@ -1081,7 +1200,7 @@ export function StockMovementModal({
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-[780px] w-full text-sm">
+            <table className="min-w-[1120px] w-full text-sm">
               <thead className="border-b border-gray-200 bg-white">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold text-gray-600">
@@ -1095,6 +1214,22 @@ export function StockMovementModal({
                   <th className="w-40 px-4 py-3 text-center font-semibold text-gray-600">
                     Cantidad
                   </th>
+
+                  {allowsUnitCost && (
+                    <>
+                      <th className="w-44 px-4 py-3 text-center font-semibold text-gray-600">
+                        Precio unitario
+                      </th>
+
+                      <th className="w-40 px-4 py-3 text-center font-semibold text-gray-600">
+                        Moneda
+                      </th>
+
+                      <th className="w-44 px-4 py-3 text-right font-semibold text-gray-600">
+                        Total
+                      </th>
+                    </>
+                  )}
 
                   <th className="w-20 px-4 py-3 text-center font-semibold text-gray-600">
                     Acción
@@ -1317,6 +1452,79 @@ export function StockMovementModal({
                             </p>
                           )}
                         </td>
+
+                        {allowsUnitCost && (
+                          <>
+                            <td className="px-4 py-3">
+                              <Input
+                                type="number"
+                                min={0}
+                                step="0.0001"
+                                placeholder="Opcional"
+                                value={
+                                  line.unitCost ??
+                                  ""
+                                }
+                                onChange={(event) =>
+                                  updateUnitCost(
+                                    line.id,
+                                    event.target.value,
+                                  )
+                                }
+                                disabled={loading}
+                              />
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <select
+                                value={
+                                  line.unitCost !== undefined
+                                    ? line.currency ?? "PEN"
+                                    : ""
+                                }
+                                onChange={(event) =>
+                                  updateCurrency(
+                                    line.id,
+                                    event.target.value as "PEN" | "USD",
+                                  )
+                                }
+                                disabled={
+                                  loading ||
+                                  line.unitCost === undefined
+                                }
+                                className="w-full rounded-lg border border-gray-300 bg-white p-2.5 outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100 disabled:text-gray-400"
+                              >
+                                <option value="">—</option>
+                                <option value="PEN">
+                                  PEN - Soles (S/)
+                                </option>
+                                <option value="USD">
+                                  USD - Dólares (US$)
+                                </option>
+                              </select>
+                            </td>
+
+                            <td className="px-4 py-3 text-right">
+                              {line.unitCost !== undefined ? (
+                                <div className="pt-2 font-semibold text-gray-800">
+                                  {line.currency === "USD"
+                                    ? "US$"
+                                    : "S/"}{" "}
+                                  {Number(
+                                    line.quantity * line.unitCost,
+                                  ).toLocaleString("es-PE", {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="pt-2 text-gray-300">
+                                  —
+                                </div>
+                              )}
+                            </td>
+                          </>
+                        )}
 
                         <td className="px-4 py-3 text-center">
                           <button
