@@ -7,8 +7,12 @@ import {
 } from 'typeorm';
 
 import { RemissionGuide } from './remission-guide.entity';
+
 import { RequestDetail } from '../../requests/entities/request-detail.entity';
+
 import { Product } from '../../products/entities/product.entity';
+
+export type RemissionGuideCostCurrency = 'PEN' | 'USD';
 
 @Entity('remission_guide_details')
 export class RemissionGuideDetail {
@@ -19,14 +23,18 @@ export class RemissionGuideDetail {
     nullable: false,
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'remission_guide_id' })
+  @JoinColumn({
+    name: 'remission_guide_id',
+  })
   guide!: RemissionGuide;
 
   @ManyToOne(() => RequestDetail, {
     nullable: true,
     onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'request_detail_id' })
+  @JoinColumn({
+    name: 'request_detail_id',
+  })
   requestDetail?: RequestDetail | null;
 
   @ManyToOne(() => Product, {
@@ -34,19 +42,47 @@ export class RemissionGuideDetail {
     nullable: true,
     onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'product_id' })
+  @JoinColumn({
+    name: 'product_id',
+  })
   product?: Product | null;
 
-  // Snapshot descriptivo para guías manuales y para conservar
-  // el texto mostrado aunque el maestro de productos cambie.
-  @Column({ name: 'description', type: 'varchar', length: 300, nullable: true })
+  // ============================================================
+  // SNAPSHOT DESCRIPTIVO
+  //
+  // Conserva lo mostrado en la Guía incluso si luego se modifica
+  // el maestro de productos.
+  // ============================================================
+
+  @Column({
+    name: 'description',
+    type: 'varchar',
+    length: 300,
+    nullable: true,
+  })
   description?: string | null;
 
-  @Column({ name: 'unit', type: 'varchar', length: 50, nullable: true })
+  @Column({
+    name: 'unit',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
   unit?: string | null;
 
-  @Column('decimal', { precision: 12, scale: 2 })
+  // ============================================================
+  // CANTIDAD
+  // ============================================================
+
+  @Column('decimal', {
+    precision: 12,
+    scale: 2,
+  })
   quantity!: number;
+
+  // ============================================================
+  // SNAPSHOT DE VALORIZACIÓN
+  // ============================================================
 
   @Column('decimal', {
     name: 'unit_cost',
@@ -63,6 +99,30 @@ export class RemissionGuideDetail {
     nullable: true,
   })
   totalCost?: number | null;
+
+  // ============================================================
+  // MONEDA HISTÓRICA DEL DESPACHO
+  //
+  // PEN = Soles
+  // USD = Dólares
+  //
+  // Se guarda como snapshot para que un cambio posterior en una
+  // O.C. o en el inventario no altere el reporte histórico.
+  //
+  // Nullable para mantener compatibilidad con guías antiguas.
+  // ============================================================
+
+  @Column({
+    name: 'cost_currency',
+    type: 'varchar',
+    length: 3,
+    nullable: true,
+  })
+  currency?: RemissionGuideCostCurrency | null;
+
+  // ============================================================
+  // PESO
+  // ============================================================
 
   @Column('decimal', {
     name: 'total_weight',

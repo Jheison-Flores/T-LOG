@@ -2,6 +2,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsEnum,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -13,6 +14,8 @@ import {
 import { Type } from 'class-transformer';
 
 import { MovementType } from '../entities/movement-type.enum';
+
+export type BatchStockMovementCurrency = 'PEN' | 'USD';
 
 export class BatchStockMovementDetailDto {
   // ============================================================
@@ -36,10 +39,10 @@ export class BatchStockMovementDetailDto {
   //
   // Opcional e independiente por cada producto.
   //
-  // Esto permite registrar una entrada múltiple donde:
+  // Ejemplo:
   //
   // Producto A = S/ 10.50
-  // Producto B = S/ 22.00
+  // Producto B = US$ 22.00
   // Producto C = sin precio
   // ============================================================
 
@@ -50,6 +53,19 @@ export class BatchStockMovementDetailDto {
   })
   @Min(0)
   unitCost?: number;
+
+  // ============================================================
+  // MONEDA
+  //
+  // Cada producto tiene una sola moneda.
+  //
+  // PEN = Soles
+  // USD = Dólares
+  // ============================================================
+
+  @IsOptional()
+  @IsIn(['PEN', 'USD'])
+  currency?: BatchStockMovementCurrency;
 }
 
 export class CreateBatchStockMovementDto {

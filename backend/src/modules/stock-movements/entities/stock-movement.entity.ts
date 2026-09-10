@@ -8,8 +8,12 @@ import {
 } from 'typeorm';
 
 import { Inventory } from '../../inventory/entities/inventory.entity';
+
 import { User } from '../../users/entities/user.entity';
+
 import { MovementType } from './movement-type.enum';
+
+export type CostCurrency = 'PEN' | 'USD';
 
 @Entity('stock_movements')
 export class StockMovement {
@@ -82,6 +86,24 @@ export class StockMovement {
   totalCost?: number | null;
 
   // ============================================================
+  // MONEDA DEL COSTO
+  //
+  // PEN = Soles
+  // USD = Dólares
+  //
+  // Es nullable para mantener compatibilidad con movimientos
+  // históricos que ya tenían precio antes de implementar moneda.
+  // ============================================================
+
+  @Column({
+    name: 'cost_currency',
+    type: 'varchar',
+    length: 3,
+    nullable: true,
+  })
+  currency?: CostCurrency | null;
+
+  // ============================================================
   // MOTIVO
   // ============================================================
 
@@ -95,6 +117,7 @@ export class StockMovement {
   // REFERENCIA
   //
   // Ejemplos:
+  //
   // COMPRA:F001-000154
   // REQ:REQ-00025
   // TRANSFERENCIA:TR-000123

@@ -11,6 +11,8 @@ import { DataSource, Repository, EntityManager } from 'typeorm';
 
 import { StockMovement } from '../entities/stock-movement.entity';
 
+import type { CostCurrency } from '../entities/stock-movement.entity';
+
 import { Product } from '../../products/entities/product.entity';
 
 import { Warehouse } from '../../warehouses/entities/warehouse.entity';
@@ -26,6 +28,11 @@ import { CreateStockMovementDto } from '../dto/create-stock-movement.dto';
 import { CreateBatchStockMovementDto } from '../dto/create-batch-stock-movement.dto';
 
 import { MovementType } from '../entities/movement-type.enum';
+
+export interface InventoryValuation {
+  unitCost: number;
+  currency: CostCurrency;
+}
 
 @Injectable()
 export class StockMovementsService {
@@ -132,14 +139,6 @@ export class StockMovementsService {
 
     const warehouseId = this.getUserWarehouseId(user);
 
-    // ==========================================================
-    // ENTRY
-    // OUTPUT
-    // ADJUSTMENTS
-    //
-    // Solo pueden afectar SU warehouse.
-    // ==========================================================
-
     if (
       dto.movementType === MovementType.ENTRY ||
       dto.movementType === MovementType.OUTPUT ||
@@ -154,15 +153,6 @@ export class StockMovementsService {
 
       return;
     }
-
-    // ==========================================================
-    // TRANSFERENCIA
-    //
-    // LOGISTICS puede transferir DESDE su warehouse.
-    //
-    // Puede VER transferencias hacia su warehouse,
-    // pero no crearlas quitando stock de otra sede.
-    // ==========================================================
 
     if (dto.movementType === MovementType.TRANSFER) {
       if (!dto.sourceWarehouseId || dto.sourceWarehouseId !== warehouseId) {
@@ -179,7 +169,6 @@ export class StockMovementsService {
 
   async processMovement(
     dto: CreateStockMovementDto,
-
     userId: number,
   ): Promise<StockMovement> {
     return this.dataSource.transaction(async (manager: EntityManager) => {
@@ -189,24 +178,10 @@ export class StockMovementsService {
 
   // ============================================================
   // PROCESAR MOVIMIENTO MÚLTIPLE
-  //
-  // Todos los productos comparten:
-  // - tipo de movimiento
-  // - almacén / origen / destino
-  // - motivo
-  // - referencia
-  //
-  // Cada producto genera su propio StockMovement para conservar
-  // trazabilidad individual en el historial.
-  //
-  // IMPORTANTE:
-  // toda la operación se ejecuta en UNA sola transacción.
-  // Si una línea falla, PostgreSQL revierte todas las anteriores.
   // ============================================================
 
   async processBatchMovement(
     dto: CreateBatchStockMovementDto,
-
     userId: number,
   ): Promise<StockMovement[]> {
     if (!dto.details || dto.details.length === 0) {
@@ -235,6 +210,8 @@ export class StockMovementsService {
           quantity: detail.quantity,
 
           unitCost: detail.unitCost,
+
+          currency: detail.currency,
 
           warehouseId: dto.warehouseId,
 
@@ -266,18 +243,9 @@ export class StockMovementsService {
 
   async processMovementWithManager(
     manager: EntityManager,
-
     dto: CreateStockMovementDto,
-
     userId: number,
   ): Promise<StockMovement> {
-    /*
-     * IMPORTANTE:
-     *
-     * Esto protege también movimientos creados
-     * desde Compras o Solicitudes.
-     */
-
     const user = await this.getAuthenticatedUser(userId, manager);
 
     this.validateMovementAccess(user, dto);
@@ -304,7 +272,7 @@ export class StockMovementsService {
   }
 
   // ============================================================
-  // VALORIZACIÓN
+  // NORMALIZAR PRECIO UNITARIO
   // ============================================================
 
   private normalizeUnitCost(value: unknown): number | null {
@@ -323,6 +291,67 @@ export class StockMovementsService {
     return Number(unitCost.toFixed(4));
   }
 
+  // ============================================================
+  // NORMALIZAR MONEDA
+  // ============================================================
+
+  private normalizeCurrency(value: unknown): CostCurrency | null {
+    if (value === undefined || value === null || value === '') {
+      return null;
+    }
+
+    const currency = String(value).trim().toUpperCase();
+
+    if (currency !== 'PEN' && currency !== 'USD') {
+      throw new BadRequestException('La moneda debe ser PEN o USD.');
+    }
+
+    return currency as CostCurrency;
+  }
+
+  // ============================================================
+  // VALIDAR PRECIO + MONEDA
+  //
+  // REGLAS:
+  //
+  // - sin precio → sin moneda
+  // - con precio → moneda obligatoria
+  // - no permitimos moneda sin precio
+  // ============================================================
+
+  private normalizeExplicitValuation(
+    unitCostValue: unknown,
+    currencyValue: unknown,
+  ): {
+    unitCost: number | null;
+    currency: CostCurrency | null;
+  } {
+    const unitCost = this.normalizeUnitCost(unitCostValue);
+
+    const currency = this.normalizeCurrency(currencyValue);
+
+    if (unitCost === null && currency !== null) {
+      throw new BadRequestException(
+        'No se puede indicar una moneda sin registrar un precio unitario.',
+      );
+    }
+
+    if (unitCost !== null && currency === null) {
+      throw new BadRequestException(
+        'Debe indicar la moneda del precio unitario: PEN o USD.',
+      );
+    }
+
+    return {
+      unitCost,
+      currency,
+    };
+  }
+
+  // ============================================================
+  // CALCULAR COSTO TOTAL
+  // ============================================================
+
   private calculateTotalCost(
     quantity: number,
     unitCost: number | null,
@@ -335,38 +364,58 @@ export class StockMovementsService {
   }
 
   // ============================================================
-  // ÚLTIMO COSTO CONOCIDO EN INVENTARIO
+  // ÚLTIMA VALORIZACIÓN VÁLIDA DEL INVENTARIO
   //
   // Busca el último movimiento valorizado que haya INGRESADO
-  // el producto al almacén indicado.
+  // el producto al almacén.
   //
   // Puede provenir de:
-  // - ENTRY
-  // - TRANSFER recibida
-  // - ADJUSTMENT_IN
   //
-  // Si nunca existió un movimiento valorizado:
-  // devuelve null.
+  // ENTRY
+  // TRANSFER
+  // ADJUSTMENT_IN
+  //
+  // IMPORTANTE:
+  //
+  // Solo considera registros que tengan:
+  //
+  // unitCost + currency
+  //
+  // De esta manera NO asumimos que los movimientos históricos
+  // anteriores a la implementación de moneda estaban en soles.
   // ============================================================
 
-  async getLatestInventoryUnitCost(
+  async getLatestInventoryValuation(
     manager: EntityManager,
     productId: number,
     warehouseId: number,
-  ): Promise<number | null> {
+  ): Promise<InventoryValuation | null> {
     const movement = await manager
       .getRepository(StockMovement)
       .createQueryBuilder('movement')
+
       .innerJoin('movement.destinationInventory', 'destinationInventory')
+
       .innerJoin('destinationInventory.product', 'product')
+
       .innerJoin('destinationInventory.warehouse', 'warehouse')
+
       .where('product.id = :productId', {
         productId,
       })
+
       .andWhere('warehouse.id = :warehouseId', {
         warehouseId,
       })
+
       .andWhere('movement.unitCost IS NOT NULL')
+
+      .andWhere('movement.currency IS NOT NULL')
+
+      .andWhere('movement.currency IN (:...currencies)', {
+        currencies: ['PEN', 'USD'],
+      })
+
       .andWhere('movement.movementType IN (:...movementTypes)', {
         movementTypes: [
           MovementType.ENTRY,
@@ -374,14 +423,18 @@ export class StockMovementsService {
           MovementType.ADJUSTMENT_IN,
         ],
       })
+
       .orderBy('movement.createdAt', 'DESC')
+
       .addOrderBy('movement.id', 'DESC')
+
       .getOne();
 
     if (
       !movement ||
       movement.unitCost === null ||
-      movement.unitCost === undefined
+      movement.unitCost === undefined ||
+      !movement.currency
     ) {
       return null;
     }
@@ -392,7 +445,42 @@ export class StockMovementsService {
       return null;
     }
 
-    return unitCost;
+    const currency = this.normalizeCurrency(movement.currency);
+
+    if (currency === null) {
+      return null;
+    }
+
+    return {
+      unitCost: Number(unitCost.toFixed(4)),
+
+      currency,
+    };
+  }
+
+  // ============================================================
+  // COMPATIBILIDAD
+  //
+  // Conservamos este método porque actualmente otros módulos
+  // pueden estar utilizándolo.
+  //
+  // En la Entrega 3, Guías pasará a utilizar directamente:
+  //
+  // getLatestInventoryValuation()
+  // ============================================================
+
+  async getLatestInventoryUnitCost(
+    manager: EntityManager,
+    productId: number,
+    warehouseId: number,
+  ): Promise<number | null> {
+    const valuation = await this.getLatestInventoryValuation(
+      manager,
+      productId,
+      warehouseId,
+    );
+
+    return valuation?.unitCost ?? null;
   }
 
   // ============================================================
@@ -405,8 +493,6 @@ export class StockMovementsService {
     const query = this.movementRepository
       .createQueryBuilder('movement')
 
-      // INVENTARIO ORIGEN
-
       .leftJoinAndSelect('movement.sourceInventory', 'sourceInventory')
 
       .leftJoinAndSelect('sourceInventory.product', 'sourceProduct')
@@ -414,8 +500,6 @@ export class StockMovementsService {
       .leftJoinAndSelect('sourceProduct.category', 'sourceCategory')
 
       .leftJoinAndSelect('sourceInventory.warehouse', 'sourceWarehouse')
-
-      // INVENTARIO DESTINO
 
       .leftJoinAndSelect(
         'movement.destinationInventory',
@@ -431,20 +515,11 @@ export class StockMovementsService {
         'destinationWarehouse',
       )
 
-      // USUARIO
-
       .leftJoinAndSelect('movement.user', 'user')
 
       .leftJoinAndSelect('user.role', 'role')
 
       .leftJoinAndSelect('user.warehouse', 'userWarehouse');
-
-    // ==========================================================
-    // LOGISTICS
-    //
-    // Ve movimientos donde su warehouse participe
-    // como origen O destino.
-    // ==========================================================
 
     if (!this.hasGlobalAccess(user)) {
       const warehouseId = this.getUserWarehouseId(user);
@@ -505,10 +580,6 @@ export class StockMovementsService {
       throw new NotFoundException('Movimiento no encontrado.');
     }
 
-    /*
-     * ADMIN puede verlo.
-     */
-
     if (this.hasGlobalAccess(user)) {
       return movement;
     }
@@ -518,10 +589,6 @@ export class StockMovementsService {
     const sourceWarehouseId = movement.sourceInventory?.warehouse?.id;
 
     const destinationWarehouseId = movement.destinationInventory?.warehouse?.id;
-
-    /*
-     * Debe participar como origen o destino.
-     */
 
     if (
       sourceWarehouseId !== warehouseId &&
@@ -539,9 +606,7 @@ export class StockMovementsService {
 
   private async processEntry(
     manager: EntityManager,
-
     dto: CreateStockMovementDto,
-
     userId: number,
   ): Promise<StockMovement> {
     if (!dto.warehouseId) {
@@ -594,14 +659,23 @@ export class StockMovementsService {
     if (!inventory) {
       inventory = manager.create(Inventory, {
         product,
+
         warehouse,
+
         quantity: 0,
       });
     }
 
-    const unitCost = this.normalizeUnitCost(dto.unitCost);
+    // ==========================================================
+    // VALORIZACIÓN DE LA ENTRADA
+    // ==========================================================
 
-    const totalCost = this.calculateTotalCost(dto.quantity, unitCost);
+    const valuation = this.normalizeExplicitValuation(
+      dto.unitCost,
+      dto.currency,
+    );
+
+    const totalCost = this.calculateTotalCost(dto.quantity, valuation.unitCost);
 
     inventory.quantity += dto.quantity;
 
@@ -612,9 +686,11 @@ export class StockMovementsService {
 
       quantity: dto.quantity,
 
-      unitCost,
+      unitCost: valuation.unitCost,
 
       totalCost,
+
+      currency: valuation.currency,
 
       reason: dto.reason,
 
@@ -632,13 +708,14 @@ export class StockMovementsService {
 
   // ============================================================
   // SALIDA
+  //
+  // La valorización NO se solicita manualmente.
+  // Se hereda del último ingreso valorizado válido.
   // ============================================================
 
   private async processOutput(
     manager: EntityManager,
-
     dto: CreateStockMovementDto,
-
     userId: number,
   ): Promise<StockMovement> {
     if (!dto.warehouseId) {
@@ -670,11 +747,15 @@ export class StockMovementsService {
       );
     }
 
-    const unitCost = await this.getLatestInventoryUnitCost(
+    const valuation = await this.getLatestInventoryValuation(
       manager,
       dto.productId,
       dto.warehouseId,
     );
+
+    const unitCost = valuation?.unitCost ?? null;
+
+    const currency = valuation?.currency ?? null;
 
     const totalCost = this.calculateTotalCost(dto.quantity, unitCost);
 
@@ -690,6 +771,8 @@ export class StockMovementsService {
       unitCost,
 
       totalCost,
+
+      currency,
 
       reason: dto.reason,
 
@@ -711,9 +794,7 @@ export class StockMovementsService {
 
   private async processTransfer(
     manager: EntityManager,
-
     dto: CreateStockMovementDto,
-
     userId: number,
   ): Promise<StockMovement> {
     if (!dto.sourceWarehouseId || !dto.destinationWarehouseId) {
@@ -752,14 +833,50 @@ export class StockMovementsService {
     }
 
     // ==========================================================
-    // TOMAR COSTO DEL INVENTARIO DE ORIGEN
+    // DETERMINAR VALORIZACIÓN DE LA TRANSFERENCIA
+    //
+    // PRIORIDAD:
+    //
+    // 1. Si se manda unitCost/currency explícitamente,
+    //    conservamos exactamente esa valorización.
+    //
+    // 2. Si ninguno viene informado, buscamos la última
+    //    valorización válida del inventario de origen.
+    //
+    // Esto permitirá que la Guía de Remisión conserve exactamente
+    // el mismo precio y moneda.
     // ==========================================================
 
-    const unitCost = await this.getLatestInventoryUnitCost(
-      manager,
-      dto.productId,
-      dto.sourceWarehouseId,
-    );
+    const hasProvidedUnitCost =
+      dto.unitCost !== undefined && dto.unitCost !== null;
+
+    const hasProvidedCurrency =
+      dto.currency !== undefined && dto.currency !== null;
+
+    let unitCost: number | null = null;
+
+    let currency: CostCurrency | null = null;
+
+    if (hasProvidedUnitCost || hasProvidedCurrency) {
+      const explicitValuation = this.normalizeExplicitValuation(
+        dto.unitCost,
+        dto.currency,
+      );
+
+      unitCost = explicitValuation.unitCost;
+
+      currency = explicitValuation.currency;
+    } else {
+      const inventoryValuation = await this.getLatestInventoryValuation(
+        manager,
+        dto.productId,
+        dto.sourceWarehouseId,
+      );
+
+      unitCost = inventoryValuation?.unitCost ?? null;
+
+      currency = inventoryValuation?.currency ?? null;
+    }
 
     const totalCost = this.calculateTotalCost(dto.quantity, unitCost);
 
@@ -819,7 +936,9 @@ export class StockMovementsService {
 
       destinationInventory = manager.create(Inventory, {
         product,
+
         warehouse,
+
         quantity: 0,
       });
     }
@@ -829,7 +948,7 @@ export class StockMovementsService {
     await manager.save(Inventory, destinationInventory);
 
     // ==========================================================
-    // REGISTRAR TRANSFERENCIA VALORIZADA
+    // REGISTRAR TRANSFERENCIA
     // ==========================================================
 
     const movement = manager.create(StockMovement, {
@@ -840,6 +959,8 @@ export class StockMovementsService {
       unitCost,
 
       totalCost,
+
+      currency,
 
       reason: dto.reason,
 
@@ -863,9 +984,7 @@ export class StockMovementsService {
 
   private async processAdjustmentIn(
     manager: EntityManager,
-
     dto: CreateStockMovementDto,
-
     userId: number,
   ): Promise<StockMovement> {
     if (!dto.warehouseId) {
@@ -914,14 +1033,23 @@ export class StockMovementsService {
     if (!inventory) {
       inventory = manager.create(Inventory, {
         product,
+
         warehouse,
+
         quantity: 0,
       });
     }
 
-    const unitCost = this.normalizeUnitCost(dto.unitCost);
+    // ==========================================================
+    // VALORIZACIÓN DEL AJUSTE DE ENTRADA
+    // ==========================================================
 
-    const totalCost = this.calculateTotalCost(dto.quantity, unitCost);
+    const valuation = this.normalizeExplicitValuation(
+      dto.unitCost,
+      dto.currency,
+    );
+
+    const totalCost = this.calculateTotalCost(dto.quantity, valuation.unitCost);
 
     inventory.quantity += dto.quantity;
 
@@ -932,9 +1060,11 @@ export class StockMovementsService {
 
       quantity: dto.quantity,
 
-      unitCost,
+      unitCost: valuation.unitCost,
 
       totalCost,
+
+      currency: valuation.currency,
 
       reason: dto.reason,
 
@@ -952,13 +1082,13 @@ export class StockMovementsService {
 
   // ============================================================
   // AJUSTE SALIDA
+  //
+  // Hereda automáticamente la valorización del inventario.
   // ============================================================
 
   private async processAdjustmentOut(
     manager: EntityManager,
-
     dto: CreateStockMovementDto,
-
     userId: number,
   ): Promise<StockMovement> {
     if (!dto.warehouseId) {
@@ -990,11 +1120,15 @@ export class StockMovementsService {
       );
     }
 
-    const unitCost = await this.getLatestInventoryUnitCost(
+    const valuation = await this.getLatestInventoryValuation(
       manager,
       dto.productId,
       dto.warehouseId,
     );
+
+    const unitCost = valuation?.unitCost ?? null;
+
+    const currency = valuation?.currency ?? null;
 
     const totalCost = this.calculateTotalCost(dto.quantity, unitCost);
 
@@ -1010,6 +1144,8 @@ export class StockMovementsService {
       unitCost,
 
       totalCost,
+
+      currency,
 
       reason: dto.reason,
 

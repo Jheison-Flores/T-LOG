@@ -1005,10 +1005,36 @@ export class PurchasesService {
     }
 
     // ==========================================================
-    // ENTRADAS DE INVENTARIO
+    // ENTRADAS DE INVENTARIO VALORIZADAS
+    //
+    // La moneda registrada en la O.C. se conserva en cada
+    // movimiento de entrada. De esta forma el inventario conoce:
+    //
+    // - precio unitario
+    // - moneda (PEN / USD)
+    // - costo total
+    //
+    // y esa valorización podrá viajar posteriormente a una
+    // transferencia y a una Guía de Remisión.
     // ==========================================================
 
+    const purchaseCurrency = String(purchase.currency).trim().toUpperCase();
+
+    if (purchaseCurrency !== 'PEN' && purchaseCurrency !== 'USD') {
+      throw new BadRequestException(
+        'La moneda de la Orden de Compra no es válida.',
+      );
+    }
+
     for (const detail of purchase.details) {
+      const unitCost = Number(detail.unitPrice);
+
+      if (!Number.isFinite(unitCost) || unitCost < 0) {
+        throw new BadRequestException(
+          `El precio unitario del producto "${detail.product.name}" no es válido.`,
+        );
+      }
+
       await this.stockMovementsService.processMovement(
         {
           movementType: MovementType.ENTRY,
@@ -1016,6 +1042,10 @@ export class PurchasesService {
           productId: detail.product.id,
 
           quantity: Number(detail.quantity),
+
+          unitCost,
+
+          currency: purchaseCurrency,
 
           warehouseId: warehouse.id,
 

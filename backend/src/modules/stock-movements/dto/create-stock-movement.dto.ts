@@ -1,4 +1,5 @@
 import {
+  IsIn,
   IsEnum,
   IsInt,
   IsNumber,
@@ -10,6 +11,8 @@ import {
 import { Type } from 'class-transformer';
 
 import { MovementType } from '../entities/movement-type.enum';
+
+export type StockMovementCurrency = 'PEN' | 'USD';
 
 export class CreateStockMovementDto {
   @IsEnum(MovementType)
@@ -40,8 +43,8 @@ export class CreateStockMovementDto {
   // - ENTRY
   // - ADJUSTMENT_IN
   //
-  // Si no se proporciona, el movimiento puede quedar
-  // sin valorización.
+  // También puede ser utilizado internamente por TRANSFER para
+  // conservar exactamente la valorización de una Guía.
   // ============================================================
 
   @IsOptional()
@@ -51,6 +54,20 @@ export class CreateStockMovementDto {
   })
   @Min(0)
   unitCost?: number;
+
+  // ============================================================
+  // MONEDA DEL PRECIO
+  //
+  // PEN = Soles
+  // USD = Dólares
+  //
+  // La validación de negocio precio ↔ moneda se realizará en el
+  // StockMovementsService.
+  // ============================================================
+
+  @IsOptional()
+  @IsIn(['PEN', 'USD'])
+  currency?: StockMovementCurrency;
 
   // ============================================================
   // ENTRADA / SALIDA / AJUSTE

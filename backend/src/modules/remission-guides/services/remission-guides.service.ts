@@ -35,6 +35,8 @@ import { SettingsService } from '../../settings/services/settings.services';
 
 import { PurchaseDetail } from '../../purchases/entities/purchase-detail.entity';
 
+import { PurchaseCurrency } from '../../purchases/entities/purchase-currency.enum';
+
 import { Product } from '../../products/entities/product.entity';
 
 import { RemissionGuideType } from '../entities/remission-guide-type.enum';
@@ -378,17 +380,21 @@ export class RemissionGuidesService {
   // ÚLTIMO PRECIO DE COMPRA DEL PRODUCTO
   //
   // Regla de negocio:
-  // - La valorización NO usa product.currentPrice.
-  // - Se busca la última O.C. que contenga el producto.
-  // - Se toma PurchaseDetail.unitPrice.
-  // - La última O.C. se determina por purchaseDate DESC y,
-  //   en caso de empate o fecha nula, por id DESC.
+  // - No usa product.currentPrice.
+  // - Busca la última O.C. que contenga el producto.
+  // - Toma PurchaseDetail.unitPrice.
+  //
+  // Este precio funciona como FALLBACK cuando el producto
+  // todavía no tiene una entrada valorizada en inventario.
   // ============================================================
 
-  private async getLatestPurchaseUnitCost(
+  private async getLatestPurchaseValuation(
     manager: EntityManager,
     productId: number,
-  ): Promise<number | null> {
+  ): Promise<{
+    unitCost: number;
+    currency: 'PEN' | 'USD';
+  } | null> {
     const latestPurchaseDetail = await manager
       .getRepository(PurchaseDetail)
       .createQueryBuilder('purchaseDetail')
@@ -408,11 +414,54 @@ export class RemissionGuidesService {
 
     const unitCost = Number(latestPurchaseDetail.unitPrice);
 
-    if (!Number.isFinite(unitCost) || unitCost <= 0) {
+    if (!Number.isFinite(unitCost) || unitCost < 0) {
       return null;
     }
 
-    return unitCost;
+    const currency = latestPurchaseDetail.purchase?.currency;
+
+    if (
+      currency !== PurchaseCurrency.PEN &&
+      currency !== PurchaseCurrency.USD
+    ) {
+      return null;
+    }
+
+    return {
+      unitCost: Number(unitCost.toFixed(4)),
+      currency,
+    };
+  }
+
+  // ============================================================
+  // VALORIZACIÓN PARA DESPACHO
+  //
+  // PRIORIDAD:
+  // 1. Última valorización válida del inventario de origen.
+  // 2. Último precio + moneda de la O.C. del producto.
+  // 3. null si no existe valorización válida.
+  // ============================================================
+
+  private async getDispatchValuation(
+    manager: EntityManager,
+    productId: number,
+    sourceWarehouseId: number,
+  ): Promise<{
+    unitCost: number;
+    currency: 'PEN' | 'USD';
+  } | null> {
+    const inventoryValuation =
+      await this.stockMovementsService.getLatestInventoryValuation(
+        manager,
+        productId,
+        sourceWarehouseId,
+      );
+
+    if (inventoryValuation) {
+      return inventoryValuation;
+    }
+
+    return this.getLatestPurchaseValuation(manager, productId);
   }
 
   // ============================================================
@@ -575,10 +624,6 @@ export class RemissionGuidesService {
 
       // ======================================================
       // TIPO EXTERNAL_SERVICE
-      //
-      // Por seguridad, como el origen es Lima, un LOGISTICS de
-      // mina no puede emitir una guía externa desde un almacén
-      // que no le pertenece.
       // ======================================================
 
       if (dto.guideType === RemissionGuideType.EXTERNAL_SERVICE) {
@@ -668,7 +713,7 @@ export class RemissionGuidesService {
       );
 
       // ======================================================
-      // DATOS DOCUMENTALES SEGÚN TIPO
+      // DATOS DOCUMENTALES
       // ======================================================
 
       const arrivalPoint =
@@ -876,12 +921,34 @@ export class RemissionGuidesService {
           }
         }
 
-        const unitCost = product
-          ? await this.getLatestPurchaseUnitCost(manager, product.id)
+        // ====================================================
+        // VALORIZACIÓN
+        //
+        // Primero intentamos obtener el costo realmente conocido
+        // en el inventario del almacén central.
+        //
+        // Si todavía no existe:
+        // usamos la última O.C. como respaldo.
+        // ====================================================
+
+        const valuation = product
+          ? await this.getDispatchValuation(
+              manager,
+              product.id,
+              sourceWarehouse.id,
+            )
           : null;
+
+        const unitCost = valuation?.unitCost ?? null;
+
+        const currency = valuation?.currency ?? null;
 
         const totalCost =
           unitCost !== null ? Number((quantity * unitCost).toFixed(2)) : null;
+
+        // ====================================================
+        // SNAPSHOT DEL DETALLE
+        // ====================================================
 
         const guideDetail = manager.create(RemissionGuideDetail, {
           guide: savedGuide,
@@ -899,6 +966,8 @@ export class RemissionGuidesService {
           unitCost,
 
           totalCost,
+
+          currency,
 
           totalWeight,
         });
@@ -932,6 +1001,10 @@ export class RemissionGuidesService {
               productId: product!.id,
 
               quantity,
+
+              unitCost: unitCost ?? undefined,
+
+              currency: currency ?? undefined,
 
               sourceWarehouseId: sourceWarehouse.id,
 
@@ -1051,17 +1124,23 @@ export class RemissionGuidesService {
       where: {
         id,
       },
+
       relations: {
         request: {
           warehouse: true,
         },
+
         sourceWarehouse: true,
+
         destinationWarehouse: true,
+
         createdBy: true,
+
         details: {
           product: {
             category: true,
           },
+
           requestDetail: true,
         },
       },
