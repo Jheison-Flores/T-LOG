@@ -39,6 +39,10 @@ import {
   useWarehouses,
 } from "@/modules/warehouses/hooks/useWarehouses";
 
+import {
+  ProductSearchSelect,
+} from "@/components/selectors/ProductSearchSelect";
+
 interface Props {
   open:
     boolean;
@@ -1285,82 +1289,37 @@ export function StockMovementModal({
                         className="align-top"
                       >
                         <td className="px-4 py-3">
-                          <select
+                          <ProductSearchSelect
+                            products={
+                              activeProducts
+                            }
                             value={
                               line.productId ||
-                              ""
+                              null
                             }
-                            onChange={(
-                              event,
-                            ) =>
-                              updateProduct(
-                                line.id,
-                                Number(
-                                  event.target
-                                    .value,
-                                ),
+                            disabledIds={
+                              selectedProductIds.filter(
+                                (
+                                  productId,
+                                ) =>
+                                  productId !==
+                                  line.productId,
                               )
                             }
                             disabled={
                               loading
                             }
-                            className={`
-                              w-full
-                              rounded-lg
-                              border
-                              bg-white
-                              p-2.5
-                              outline-none
-                              focus:ring-2
-                              focus:ring-orange-500
-                              ${
-                                duplicated
-                                  ? "border-red-400"
-                                  : "border-gray-300"
-                              }
-                            `}
-                          >
-                            <option value="">
-                              Seleccione producto
-                            </option>
-
-                            {activeProducts.map(
-                              (
-                                item,
-                              ) => {
-                                const usedElsewhere =
-                                  selectedProductIds.includes(
-                                    item.id,
-                                  ) &&
-                                  item.id !==
-                                    line.productId;
-
-                                return (
-                                  <option
-                                    key={
-                                      item.id
-                                    }
-                                    value={
-                                      item.id
-                                    }
-                                    disabled={
-                                      usedElsewhere
-                                    }
-                                  >
-                                    {
-                                      item.name
-                                    }
-
-                                    {
-                                      item.sku
-                                        ? ` — ${item.sku}`
-                                        : ""
-                                    }
-                                  </option>
-                                );
-                              },
-                            )}
-                          </select>
+                            placeholder="Buscar material por nombre, código o SKU..."
+                            onChange={(
+                              productId,
+                            ) =>
+                              updateProduct(
+                                line.id,
+                                productId ??
+                                  0,
+                              )
+                            }
+                          />
 
                           {product && (
                             <p className="mt-1 text-xs text-gray-400">
@@ -1634,13 +1593,6 @@ export function StockMovementModal({
           />
         </div>
 
-        {/* =====================================================
-            INFORMACIÓN
-        ===================================================== */}
-
-        <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-          La operación es atómica: si uno de los productos no puede registrarse, no se aplicará ningún movimiento de esta operación.
-        </div>
 
         {/* =====================================================
             ERROR

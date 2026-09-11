@@ -19,6 +19,7 @@ export interface MaterialDispatchFilters {
 export interface ReportSummary {
   totalPEN: number;
   totalUSD: number;
+  guideCount: number;
   pricedItemCount: number;
   unpricedItemCount: number;
 }

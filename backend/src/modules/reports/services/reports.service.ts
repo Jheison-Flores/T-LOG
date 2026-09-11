@@ -20,9 +20,11 @@ type CostCurrency = 'PEN' | 'USD';
 interface ReportSummary {
   totalPEN: number;
   totalUSD: number;
+  guideCount: number;
   pricedItemCount: number;
   unpricedItemCount: number;
 }
+
 interface CategoryReportItem {
   categoryId: number | null;
   categoryName: string;
@@ -372,11 +374,15 @@ export class ReportsService {
     let pricedItemCount = 0;
     let unpricedItemCount = 0;
 
+    const guideIds = new Set<number>();
+
     const categoryMap = new Map<string, CategoryReportItem>();
 
     const materials: MaterialReportItem[] = [];
 
     for (const row of rows) {
+      guideIds.add(Number(row.guide_id));
+
       const quantity = this.number(row.quantity);
 
       const unitCost =
@@ -489,6 +495,8 @@ export class ReportsService {
         totalPEN: this.money(totalPEN),
 
         totalUSD: this.money(totalUSD),
+
+        guideCount: guideIds.size,
 
         pricedItemCount,
 

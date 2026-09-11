@@ -4,9 +4,13 @@ import {
 } from "react";
 
 import {
+  CalendarDays,
+  CircleDollarSign,
+  ClipboardList,
+  Coins,
+  PackageSearch,
   RefreshCw,
   Search,
-  WalletCards,
 } from "lucide-react";
 
 import {
@@ -21,17 +25,27 @@ import type {
 } from "../types/report.types";
 
 // ============================================================
-// FORMATO
+// COLORES PARA CATEGORÍAS
+// ============================================================
+
+const CATEGORY_COLORS = [
+  "#f97316",
+  "#3b82f6",
+  "#22c55e",
+  "#8b5cf6",
+  "#06b6d4",
+  "#ec4899",
+  "#eab308",
+  "#6366f1",
+];
+
+// ============================================================
+// FORMATO MONETARIO
 // ============================================================
 
 function formatMoney(
-  value:
-    | number
-    | null
-    | undefined,
-  currency:
-    | CostCurrency
-    | null,
+  value: number | null | undefined,
+  currency: CostCurrency | null,
 ) {
   if (
     value === null ||
@@ -42,25 +56,19 @@ function formatMoney(
   }
 
   const formatted =
-    new Intl.NumberFormat(
-      "es-PE",
-      {
-        minimumFractionDigits:
-          2,
-        maximumFractionDigits:
-          2,
-      },
-    ).format(
-      Number(
-        value,
-      ),
-    );
+    new Intl.NumberFormat("es-PE", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(value));
 
-  return currency ===
-    "USD"
+  return currency === "USD"
     ? `US$ ${formatted}`
     : `S/ ${formatted}`;
 }
+
+// ============================================================
+// FORMATO CANTIDAD
+// ============================================================
 
 function formatQuantity(
   value: number,
@@ -68,70 +76,146 @@ function formatQuantity(
   return new Intl.NumberFormat(
     "es-PE",
     {
-      minimumFractionDigits:
-        0,
-
-      maximumFractionDigits:
-        2,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
     },
-  ).format(
-    Number(
-      value,
-    ),
-  );
+  ).format(Number(value));
 }
 
 // ============================================================
-// TARJETA TOTAL
+// KPI MONETARIO
 // ============================================================
+
+interface TotalCardProps {
+  title: string;
+  value: number;
+  currency: CostCurrency;
+}
 
 function TotalCard({
   title,
   value,
   currency,
-}: {
-  title: string;
-  value: number;
-  currency: CostCurrency;
-}) {
+}: TotalCardProps) {
+  const isPen =
+    currency === "PEN";
+
   return (
     <div
-      className="
-        rounded-2xl
+      className={`
+        relative
+        overflow-hidden
+        rounded-3xl
         border
-        border-slate-200
-        bg-white
-        p-5
+        p-6
         shadow-sm
-      "
+        ${
+          isPen
+            ? `
+              border-orange-100
+              bg-gradient-to-br
+              from-orange-50
+              via-orange-50
+              to-orange-100
+            `
+            : `
+              border-blue-100
+              bg-gradient-to-br
+              from-blue-50
+              via-blue-50
+              to-blue-100
+            `
+        }
+      `}
     >
       <div
+        className={`
+          absolute
+          -bottom-12
+          -right-12
+          h-44
+          w-44
+          rounded-full
+          opacity-40
+          ${
+            isPen
+              ? "bg-orange-200"
+              : "bg-blue-200"
+          }
+        `}
+      />
+
+      <div
         className="
+          relative
+          z-10
           flex
           items-center
-          justify-between
-          gap-4
+          gap-5
         "
       >
+        <div
+          className={`
+            flex
+            h-16
+            w-16
+            shrink-0
+            items-center
+            justify-center
+            rounded-2xl
+            shadow-sm
+            ${
+              isPen
+                ? `
+                  bg-gradient-to-br
+                  from-orange-400
+                  to-orange-600
+                  text-white
+                `
+                : `
+                  bg-gradient-to-br
+                  from-blue-400
+                  to-blue-600
+                  text-white
+                `
+            }
+          `}
+        >
+          {isPen ? (
+            <Coins size={30} />
+          ) : (
+            <CircleDollarSign size={31} />
+          )}
+        </div>
+
         <div>
           <p
-            className="
+            className={`
               text-sm
-              font-medium
-              text-slate-500
-            "
+              font-bold
+              ${
+                isPen
+                  ? "text-orange-800"
+                  : "text-blue-800"
+              }
+            `}
           >
             {title}
           </p>
 
           <p
-            className="
-              mt-2
+            className={`
+              mt-1
               text-3xl
-              font-bold
+              font-extrabold
               tracking-tight
-              text-slate-900
-            "
+              md:text-4xl
+              ${
+                isPen
+                  ? "text-orange-700"
+                  : "text-blue-700"
+              }
+            `}
           >
             {formatMoney(
               value,
@@ -139,22 +223,104 @@ function TotalCard({
             )}
           </p>
         </div>
+      </div>
+    </div>
+  );
+}
 
+// ============================================================
+// KPI GUÍAS
+// ============================================================
+
+function GuideCountCard({
+  value,
+}: {
+  value: number;
+}) {
+  return (
+    <div
+      className="
+        relative
+        overflow-hidden
+        rounded-3xl
+        border
+        border-violet-100
+        bg-gradient-to-br
+        from-violet-50
+        via-purple-50
+        to-fuchsia-50
+        p-6
+        shadow-sm
+      "
+    >
+      <div
+        className="
+          absolute
+          -bottom-12
+          -right-12
+          h-44
+          w-44
+          rounded-full
+          bg-violet-200
+          opacity-40
+        "
+      />
+
+      <div
+        className="
+          relative
+          z-10
+          flex
+          items-center
+          gap-5
+        "
+      >
         <div
           className="
             flex
-            h-11
-            w-11
+            h-16
+            w-16
+            shrink-0
             items-center
             justify-center
-            rounded-xl
-            bg-slate-100
-            text-slate-700
+            rounded-2xl
+            bg-gradient-to-br
+            from-violet-500
+            to-purple-700
+            text-white
+            shadow-sm
           "
         >
-          <WalletCards
-            size={21}
+          <ClipboardList
+            size={30}
           />
+        </div>
+
+        <div>
+          <p
+            className="
+              text-sm
+              font-bold
+              text-violet-800
+            "
+          >
+            Total de Guías
+          </p>
+
+          <p
+            className="
+              mt-1
+              text-3xl
+              font-extrabold
+              tracking-tight
+              text-violet-700
+              md:text-4xl
+            "
+          >
+            {value.toLocaleString(
+              "es-PE",
+            )}
+          </p>
         </div>
       </div>
     </div>
@@ -162,7 +328,7 @@ function TotalCard({
 }
 
 // ============================================================
-// PÁGINA
+// DASHBOARD
 // ============================================================
 
 export function ReportsPage() {
@@ -170,22 +336,24 @@ export function ReportsPage() {
     draftFilters,
     setDraftFilters,
   ] =
-    useState<MaterialDispatchFilters>(
-      {
-        groupBy:
-          "month",
-      },
-    );
+    useState<MaterialDispatchFilters>({
+      groupBy: "month",
+    });
 
   const [
     appliedFilters,
     setAppliedFilters,
   ] =
-    useState<MaterialDispatchFilters>(
-      {
-        groupBy:
-          "month",
-      },
+    useState<MaterialDispatchFilters>({
+      groupBy: "month",
+    });
+
+  const [
+    chartCurrency,
+    setChartCurrency,
+  ] =
+    useState<CostCurrency>(
+      "PEN",
     );
 
   const {
@@ -214,8 +382,130 @@ export function ReportsPage() {
       () =>
         report?.materials ??
         [],
+      [report],
+    );
+
+  const categories =
+    useMemo(
+      () =>
+        report?.byCategory ??
+        [],
+      [report],
+    );
+
+  const chartData =
+    useMemo(
+      () => {
+        return categories
+          .map(
+            (
+              category,
+              index,
+            ) => {
+              const value =
+                chartCurrency ===
+                "PEN"
+                  ? Number(
+                      category.totalPEN ??
+                        0,
+                    )
+                  : Number(
+                      category.totalUSD ??
+                        0,
+                    );
+
+              return {
+                ...category,
+                value,
+                color:
+                  CATEGORY_COLORS[
+                    index %
+                      CATEGORY_COLORS.length
+                  ],
+              };
+            },
+          )
+          .filter(
+            (
+              category,
+            ) =>
+              category.value >
+              0,
+          )
+          .sort(
+            (
+              a,
+              b,
+            ) =>
+              b.value -
+              a.value,
+          );
+      },
       [
-        report,
+        categories,
+        chartCurrency,
+      ],
+    );
+
+  const chartTotal =
+    useMemo(
+      () =>
+        chartData.reduce(
+          (
+            total,
+            item,
+          ) =>
+            total +
+            item.value,
+          0,
+        ),
+      [chartData],
+    );
+
+  const donutGradient =
+    useMemo(
+      () => {
+        if (
+          !chartData.length ||
+          chartTotal <= 0
+        ) {
+          return "#e2e8f0";
+        }
+
+        let current =
+          0;
+
+        const segments =
+          chartData.map(
+            (
+              item,
+            ) => {
+              const percentage =
+                (item.value /
+                  chartTotal) *
+                100;
+
+              const start =
+                current;
+
+              const end =
+                current +
+                percentage;
+
+              current =
+                end;
+
+              return `${item.color} ${start}% ${end}%`;
+            },
+          );
+
+        return `conic-gradient(${segments.join(
+          ", ",
+        )})`;
+      },
+      [
+        chartData,
+        chartTotal,
       ],
     );
 
@@ -231,8 +521,7 @@ export function ReportsPage() {
         current,
       ) => ({
         ...current,
-        [key]:
-          value,
+        [key]: value,
       }),
     );
   };
@@ -248,7 +537,8 @@ export function ReportsPage() {
 
   const clearFilters =
     () => {
-      const clean: MaterialDispatchFilters =
+      const clean:
+        MaterialDispatchFilters =
         {
           groupBy:
             "month",
@@ -266,12 +556,15 @@ export function ReportsPage() {
   return (
     <div
       className="
-        space-y-6
-        pb-8
+        mx-auto
+        w-full
+        max-w-[1600px]
+        space-y-5
+        pb-10
       "
     >
       {/* =======================================================
-          CABECERA
+          TÍTULO
       ======================================================= */}
 
       <div
@@ -285,29 +578,35 @@ export function ReportsPage() {
         "
       >
         <div>
-          <h1
+          <div
             className="
-              text-2xl
-              font-bold
-              tracking-tight
-              text-slate-900
+              flex
+              items-center
+              gap-3
             "
           >
-            Reporte de materiales
-          </h1>
+            <div
+              className="
+                h-2
+                w-12
+                rounded-full
+                bg-orange-500
+              "
+            />
 
-          <p
-            className="
-              mt-1
-              text-sm
-              text-slate-500
-            "
-          >
-            Valorización de
-            materiales enviados
-            según las Guías de
-            Remisión.
-          </p>
+            <h1
+              className="
+                text-2xl
+                font-extrabold
+                tracking-tight
+                text-slate-900
+                md:text-3xl
+              "
+            >
+              Reportes de
+              Valorización
+            </h1>
+          </div>
         </div>
 
         <button
@@ -323,6 +622,7 @@ export function ReportsPage() {
             items-center
             justify-center
             gap-2
+            self-start
             rounded-xl
             border
             border-slate-200
@@ -334,9 +634,12 @@ export function ReportsPage() {
             text-slate-700
             shadow-sm
             transition
-            hover:bg-slate-50
+            hover:border-orange-200
+            hover:bg-orange-50
+            hover:text-orange-700
             disabled:cursor-not-allowed
             disabled:opacity-60
+            lg:self-auto
           "
         >
           <RefreshCw
@@ -362,150 +665,152 @@ export function ReportsPage() {
           border
           border-slate-200
           bg-white
-          p-5
+          p-4
           shadow-sm
         "
       >
         <div
           className="
-            mb-4
-            flex
-            items-center
-            gap-2
-          "
-        >
-          <Search
-            size={18}
-            className="
-              text-slate-500
-            "
-          />
-
-          <h2
-            className="
-              font-semibold
-              text-slate-800
-            "
-          >
-            Filtros
-          </h2>
-        </div>
-
-        <div
-          className="
             grid
-            gap-4
+            gap-3
             md:grid-cols-2
-            xl:grid-cols-5
+            xl:grid-cols-[1fr_1fr_1.2fr_1.2fr_1.4fr_auto]
+            xl:items-end
           "
         >
-          <label
-            className="
-              space-y-1.5
-            "
-          >
+          <label className="space-y-1.5">
             <span
               className="
                 text-xs
-                font-semibold
+                font-bold
                 text-slate-600
               "
             >
               Desde
             </span>
 
-            <input
-              type="date"
-              value={
-                draftFilters.from ??
-                ""
-              }
-              onChange={(
-                event,
-              ) =>
-                updateFilter(
-                  "from",
-                  event.target
-                    .value ||
-                    undefined,
-                )
-              }
-              className="
-                h-10
-                w-full
-                rounded-xl
-                border
-                border-slate-200
-                bg-white
-                px-3
-                text-sm
-                outline-none
-                transition
-                focus:border-slate-400
-              "
-            />
+            <div className="relative">
+              <CalendarDays
+                size={16}
+                className="
+                  pointer-events-none
+                  absolute
+                  left-3
+                  top-1/2
+                  -translate-y-1/2
+                  text-slate-400
+                "
+              />
+
+              <input
+                type="date"
+                value={
+                  draftFilters.from ??
+                  ""
+                }
+                onChange={(
+                  event,
+                ) =>
+                  updateFilter(
+                    "from",
+                    event.target
+                      .value ||
+                      undefined,
+                  )
+                }
+                className="
+                  h-11
+                  w-full
+                  rounded-xl
+                  border
+                  border-slate-200
+                  bg-slate-50
+                  pl-9
+                  pr-3
+                  text-sm
+                  text-slate-700
+                  outline-none
+                  transition
+                  focus:border-orange-300
+                  focus:bg-white
+                  focus:ring-2
+                  focus:ring-orange-100
+                "
+              />
+            </div>
           </label>
 
-          <label
-            className="
-              space-y-1.5
-            "
-          >
+          <label className="space-y-1.5">
             <span
               className="
                 text-xs
-                font-semibold
+                font-bold
                 text-slate-600
               "
             >
               Hasta
             </span>
 
-            <input
-              type="date"
-              value={
-                draftFilters.to ??
-                ""
-              }
-              onChange={(
-                event,
-              ) =>
-                updateFilter(
-                  "to",
-                  event.target
-                    .value ||
-                    undefined,
-                )
-              }
-              className="
-                h-10
-                w-full
-                rounded-xl
-                border
-                border-slate-200
-                bg-white
-                px-3
-                text-sm
-                outline-none
-                transition
-                focus:border-slate-400
-              "
-            />
+            <div className="relative">
+              <CalendarDays
+                size={16}
+                className="
+                  pointer-events-none
+                  absolute
+                  left-3
+                  top-1/2
+                  -translate-y-1/2
+                  text-slate-400
+                "
+              />
+
+              <input
+                type="date"
+                value={
+                  draftFilters.to ??
+                  ""
+                }
+                onChange={(
+                  event,
+                ) =>
+                  updateFilter(
+                    "to",
+                    event.target
+                      .value ||
+                      undefined,
+                  )
+                }
+                className="
+                  h-11
+                  w-full
+                  rounded-xl
+                  border
+                  border-slate-200
+                  bg-slate-50
+                  pl-9
+                  pr-3
+                  text-sm
+                  text-slate-700
+                  outline-none
+                  transition
+                  focus:border-orange-300
+                  focus:bg-white
+                  focus:ring-2
+                  focus:ring-orange-100
+                "
+              />
+            </div>
           </label>
 
-          <label
-            className="
-              space-y-1.5
-            "
-          >
+          <label className="space-y-1.5">
             <span
               className="
                 text-xs
-                font-semibold
+                font-bold
                 text-slate-600
               "
             >
-              Mina / almacén
+              Mina / Almacén
             </span>
 
             <select
@@ -532,22 +837,24 @@ export function ReportsPage() {
                 )
               }
               className="
-                h-10
+                h-11
                 w-full
                 rounded-xl
                 border
                 border-slate-200
-                bg-white
+                bg-slate-50
                 px-3
                 text-sm
+                text-slate-700
                 outline-none
                 transition
-                focus:border-slate-400
+                focus:border-orange-300
+                focus:bg-white
+                focus:ring-2
+                focus:ring-orange-100
               "
             >
-              <option
-                value=""
-              >
+              <option value="">
                 Todas
               </option>
 
@@ -570,15 +877,11 @@ export function ReportsPage() {
             </select>
           </label>
 
-          <label
-            className="
-              space-y-1.5
-            "
-          >
+          <label className="space-y-1.5">
             <span
               className="
                 text-xs
-                font-semibold
+                font-bold
                 text-slate-600
               "
             >
@@ -609,22 +912,24 @@ export function ReportsPage() {
                 )
               }
               className="
-                h-10
+                h-11
                 w-full
                 rounded-xl
                 border
                 border-slate-200
-                bg-white
+                bg-slate-50
                 px-3
                 text-sm
+                text-slate-700
                 outline-none
                 transition
-                focus:border-slate-400
+                focus:border-orange-300
+                focus:bg-white
+                focus:ring-2
+                focus:ring-orange-100
               "
             >
-              <option
-                value=""
-              >
+              <option value="">
                 Todas
               </option>
 
@@ -647,15 +952,11 @@ export function ReportsPage() {
             </select>
           </label>
 
-          <label
-            className="
-              space-y-1.5
-            "
-          >
+          <label className="space-y-1.5">
             <span
               className="
                 text-xs
-                font-semibold
+                font-bold
                 text-slate-600
               "
             >
@@ -686,22 +987,24 @@ export function ReportsPage() {
                 )
               }
               className="
-                h-10
+                h-11
                 w-full
                 rounded-xl
                 border
                 border-slate-200
-                bg-white
+                bg-slate-50
                 px-3
                 text-sm
+                text-slate-700
                 outline-none
                 transition
-                focus:border-slate-400
+                focus:border-orange-300
+                focus:bg-white
+                focus:ring-2
+                focus:ring-orange-100
               "
             >
-              <option
-                value=""
-              >
+              <option value="">
                 Todos
               </option>
 
@@ -723,68 +1026,66 @@ export function ReportsPage() {
               )}
             </select>
           </label>
-        </div>
 
-        <div
-          className="
-            mt-4
-            flex
-            flex-wrap
-            gap-2
-          "
-        >
-          <button
-            type="button"
-            onClick={
-              applyFilters
-            }
-            className="
-              rounded-xl
-              bg-slate-900
-              px-4
-              py-2.5
-              text-sm
-              font-semibold
-              text-white
-              transition
-              hover:bg-slate-800
-            "
-          >
-            Aplicar filtros
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={
+                applyFilters
+              }
+              className="
+                inline-flex
+                h-11
+                items-center
+                justify-center
+                gap-2
+                rounded-xl
+                bg-orange-500
+                px-5
+                text-sm
+                font-bold
+                text-white
+                shadow-sm
+                transition
+                hover:bg-orange-600
+              "
+            >
+              <Search
+                size={16}
+              />
 
-          <button
-            type="button"
-            onClick={
-              clearFilters
-            }
-            className="
-              rounded-xl
-              border
-              border-slate-200
-              bg-white
-              px-4
-              py-2.5
-              text-sm
-              font-semibold
-              text-slate-600
-              transition
-              hover:bg-slate-50
-            "
-          >
-            Limpiar
-          </button>
+              Aplicar
+            </button>
+
+            <button
+              type="button"
+              onClick={
+                clearFilters
+              }
+              className="
+                h-11
+                rounded-xl
+                border
+                border-slate-200
+                bg-white
+                px-4
+                text-sm
+                font-semibold
+                text-slate-600
+                transition
+                hover:bg-slate-50
+              "
+            >
+              Limpiar
+            </button>
+          </div>
         </div>
       </section>
-
-      {/* =======================================================
-          ERROR
-      ======================================================= */}
 
       {error && (
         <div
           className="
-            rounded-xl
+            rounded-2xl
             border
             border-red-200
             bg-red-50
@@ -794,46 +1095,61 @@ export function ReportsPage() {
             text-red-700
           "
         >
-          No se pudo cargar
-          el reporte.
+          No se pudo cargar el
+          reporte.
         </div>
       )}
-
-      {/* =======================================================
-          CARGA
-      ======================================================= */}
 
       {loadingReport ? (
         <div
           className="
-            rounded-2xl
+            flex
+            min-h-[300px]
+            items-center
+            justify-center
+            rounded-3xl
             border
             border-slate-200
             bg-white
-            p-8
-            text-center
-            text-sm
-            text-slate-500
           "
         >
-          Cargando
-          valorización...
+          <div className="text-center">
+            <RefreshCw
+              size={26}
+              className="
+                mx-auto
+                animate-spin
+                text-orange-500
+              "
+            />
+
+            <p
+              className="
+                mt-3
+                text-sm
+                font-medium
+                text-slate-500
+              "
+            >
+              Cargando reporte...
+            </p>
+          </div>
         </div>
       ) : (
         <>
           {/* ===================================================
-              TOTALES
+              KPIs
           =================================================== */}
 
           <div
             className="
               grid
               gap-4
-              md:grid-cols-2
+              xl:grid-cols-3
             "
           >
             <TotalCard
-              title="Total en soles"
+              title="Total en Soles"
               value={
                 report?.summary
                   .totalPEN ??
@@ -843,7 +1159,7 @@ export function ReportsPage() {
             />
 
             <TotalCard
-              title="Total en dólares"
+              title="Total en Dólares"
               value={
                 report?.summary
                   .totalUSD ??
@@ -851,40 +1167,15 @@ export function ReportsPage() {
               }
               currency="USD"
             />
-          </div>
 
-          {Boolean(
-            report?.summary
-              .unpricedItemCount,
-          ) && (
-            <div
-              className="
-                rounded-xl
-                border
-                border-amber-200
-                bg-amber-50
-                px-4
-                py-3
-                text-sm
-                text-amber-800
-              "
-            >
-              Hay{" "}
-              <strong>
-                {
-                  report!
-                    .summary
-                    .unpricedItemCount
-                }
-              </strong>{" "}
-              material(es)
-              enviados sin precio
-              o sin moneda
-              definida. No se
-              incluyen en los
-              totales valorizados.
-            </div>
-          )}
+            <GuideCountCard
+              value={
+                report?.summary
+                  .guideCount ??
+                0
+              }
+            />
+          </div>
 
           {/* ===================================================
               CATEGORÍAS
@@ -892,199 +1183,373 @@ export function ReportsPage() {
 
           <section
             className="
-              overflow-hidden
-              rounded-2xl
+              rounded-3xl
               border
               border-slate-200
               bg-white
+              p-5
               shadow-sm
+              md:p-6
             "
           >
             <div
               className="
-                border-b
-                border-slate-100
-                px-5
-                py-4
+                flex
+                flex-col
+                gap-3
+                sm:flex-row
+                sm:items-center
+                sm:justify-between
               "
             >
-              <h2
-                className="
-                  font-semibold
-                  text-slate-900
-                "
-              >
-                Total por categoría
-              </h2>
-
-              <p
-                className="
-                  mt-1
-                  text-sm
-                  text-slate-500
-                "
-              >
-                Los valores en
-                soles y dólares
-                se mantienen
-                separados.
-              </p>
-            </div>
-
-            <div
-              className="
-                overflow-x-auto
-              "
-            >
-              <table
-                className="
-                  w-full
-                  min-w-[620px]
-                  text-sm
-                "
-              >
-                <thead
+              <div>
+                <h2
                   className="
-                    bg-slate-50
-                    text-xs
-                    uppercase
-                    tracking-wide
+                    text-lg
+                    font-extrabold
+                    text-slate-900
+                  "
+                >
+                  Total por categoría
+                </h2>
+
+                <p
+                  className="
+                    mt-1
+                    text-sm
                     text-slate-500
                   "
                 >
-                  <tr>
-                    <th
+                  Distribución del valor
+                  de materiales enviados.
+                </p>
+              </div>
+
+              <div
+                className="
+                  inline-flex
+                  self-start
+                  rounded-xl
+                  bg-slate-100
+                  p-1
+                "
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setChartCurrency(
+                      "PEN",
+                    )
+                  }
+                  className={`
+                    rounded-lg
+                    px-4
+                    py-2
+                    text-xs
+                    font-bold
+                    transition
+                    ${
+                      chartCurrency ===
+                      "PEN"
+                        ? `
+                          bg-orange-500
+                          text-white
+                          shadow-sm
+                        `
+                        : `
+                          text-slate-500
+                          hover:text-slate-800
+                        `
+                    }
+                  `}
+                >
+                  Soles
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setChartCurrency(
+                      "USD",
+                    )
+                  }
+                  className={`
+                    rounded-lg
+                    px-4
+                    py-2
+                    text-xs
+                    font-bold
+                    transition
+                    ${
+                      chartCurrency ===
+                      "USD"
+                        ? `
+                          bg-blue-500
+                          text-white
+                          shadow-sm
+                        `
+                        : `
+                          text-slate-500
+                          hover:text-slate-800
+                        `
+                    }
+                  `}
+                >
+                  Dólares
+                </button>
+              </div>
+            </div>
+
+            {chartData.length ? (
+              <div
+                className="
+                  mt-6
+                  grid
+                  gap-8
+                  lg:grid-cols-[420px_1fr]
+                  lg:items-center
+                "
+              >
+                <div
+                  className="
+                    flex
+                    justify-center
+                  "
+                >
+                  <div
+                    className="
+                      relative
+                      flex
+                      h-64
+                      w-64
+                      items-center
+                      justify-center
+                      rounded-full
+                    "
+                    style={{
+                      background:
+                        donutGradient,
+                    }}
+                  >
+                    <div
                       className="
-                        px-5
-                        py-3
-                        text-left
-                        font-semibold
+                        flex
+                        h-36
+                        w-36
+                        flex-col
+                        items-center
+                        justify-center
+                        rounded-full
+                        bg-white
+                        shadow-inner
                       "
                     >
-                      Categoría
-                    </th>
+                      <span
+                        className="
+                          text-xs
+                          font-semibold
+                          uppercase
+                          tracking-wide
+                          text-slate-400
+                        "
+                      >
+                        Total
+                      </span>
 
-                    <th
-                      className="
-                        px-5
-                        py-3
-                        text-right
-                        font-semibold
-                      "
-                    >
-                      Total S/
-                    </th>
+                      <span
+                        className="
+                          mt-1
+                          text-lg
+                          font-extrabold
+                          text-slate-900
+                        "
+                      >
+                        {formatMoney(
+                          chartTotal,
+                          chartCurrency,
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-                    <th
-                      className="
-                        px-5
-                        py-3
-                        text-right
-                        font-semibold
-                      "
-                    >
-                      Total US$
-                    </th>
-                  </tr>
-                </thead>
+                <div className="grid gap-3">
+                  {chartData.map(
+                    (
+                      item,
+                    ) => {
+                      const percentage =
+                        chartTotal >
+                        0
+                          ? (item.value /
+                              chartTotal) *
+                            100
+                          : 0;
 
-                <tbody>
-                  {report?.byCategory
-                    .length ? (
-                    report.byCategory.map(
-                      (
-                        item,
-                      ) => (
-                        <tr
+                      return (
+                        <div
                           key={
                             item.categoryId ??
                             item.categoryName
                           }
                           className="
-                            border-t
+                            flex
+                            items-center
+                            gap-4
+                            rounded-2xl
+                            border
                             border-slate-100
+                            bg-slate-50/60
+                            px-4
+                            py-3
                           "
                         >
-                          <td
+                          <div
                             className="
-                              px-5
-                              py-3
-                              font-medium
-                              text-slate-800
+                              h-3
+                              w-3
+                              shrink-0
+                              rounded-full
                             "
-                          >
-                            {
-                              item.categoryName
-                            }
-                          </td>
+                            style={{
+                              backgroundColor:
+                                item.color,
+                            }}
+                          />
 
-                          <td
+                          <div
                             className="
-                              px-5
-                              py-3
-                              text-right
-                              font-semibold
-                              text-slate-700
+                              min-w-0
+                              flex-1
                             "
                           >
-                            {formatMoney(
-                              item.totalPEN,
-                              "PEN",
-                            )}
-                          </td>
+                            <div
+                              className="
+                                flex
+                                items-center
+                                justify-between
+                                gap-3
+                              "
+                            >
+                              <span
+                                className="
+                                  truncate
+                                  text-sm
+                                  font-bold
+                                  text-slate-800
+                                "
+                              >
+                                {
+                                  item.categoryName
+                                }
+                              </span>
 
-                          <td
-                            className="
-                              px-5
-                              py-3
-                              text-right
-                              font-semibold
-                              text-slate-700
-                            "
-                          >
-                            {formatMoney(
-                              item.totalUSD,
-                              "USD",
-                            )}
-                          </td>
-                        </tr>
-                      ),
-                    )
-                  ) : (
-                    <tr>
-                      <td
-                        colSpan={
-                          3
-                        }
-                        className="
-                          px-5
-                          py-8
-                          text-center
-                          text-slate-500
-                        "
-                      >
-                        No hay
-                        categorías
-                        con datos
-                        para los
-                        filtros
-                        seleccionados.
-                      </td>
-                    </tr>
+                              <span
+                                className="
+                                  whitespace-nowrap
+                                  text-sm
+                                  font-extrabold
+                                  text-slate-900
+                                "
+                              >
+                                {formatMoney(
+                                  item.value,
+                                  chartCurrency,
+                                )}
+                              </span>
+                            </div>
+
+                            <div
+                              className="
+                                mt-2
+                                flex
+                                items-center
+                                gap-3
+                              "
+                            >
+                              <div
+                                className="
+                                  h-1.5
+                                  flex-1
+                                  overflow-hidden
+                                  rounded-full
+                                  bg-slate-200
+                                "
+                              >
+                                <div
+                                  className="
+                                    h-full
+                                    rounded-full
+                                  "
+                                  style={{
+                                    backgroundColor:
+                                      item.color,
+                                    width: `${percentage}%`,
+                                  }}
+                                />
+                              </div>
+
+                              <span
+                                className="
+                                  w-12
+                                  text-right
+                                  text-xs
+                                  font-bold
+                                  text-slate-500
+                                "
+                              >
+                                {percentage.toFixed(
+                                  1,
+                                )}
+                                %
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    },
                   )}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="
+                  mt-6
+                  rounded-2xl
+                  border
+                  border-dashed
+                  border-slate-200
+                  py-12
+                  text-center
+                "
+              >
+                <p
+                  className="
+                    text-sm
+                    font-semibold
+                    text-slate-500
+                  "
+                >
+                  No existen categorías
+                  valorizadas en{" "}
+                  {chartCurrency ===
+                  "PEN"
+                    ? "soles"
+                    : "dólares"}
+                  .
+                </p>
+              </div>
+            )}
           </section>
 
           {/* ===================================================
-              DETALLE DE MATERIALES
+              TABLA
           =================================================== */}
 
           <section
             className="
               overflow-hidden
-              rounded-2xl
+              rounded-3xl
               border
               border-slate-200
               bg-white
@@ -1093,34 +1558,58 @@ export function ReportsPage() {
           >
             <div
               className="
+                flex
+                items-center
+                justify-between
                 border-b
                 border-slate-100
                 px-5
-                py-4
+                py-5
+                md:px-6
               "
             >
-              <h2
-                className="
-                  font-semibold
-                  text-slate-900
-                "
-              >
-                Detalle de
-                materiales
-              </h2>
+              <div>
+                <h2
+                  className="
+                    text-lg
+                    font-extrabold
+                    text-slate-900
+                  "
+                >
+                  Detalle de materiales
+                </h2>
 
-              <p
+                <p
+                  className="
+                    mt-1
+                    text-sm
+                    text-slate-500
+                  "
+                >
+                  Listado de materiales
+                  enviados y su
+                  valorización.
+                </p>
+              </div>
+
+              <div
                 className="
-                  mt-1
-                  text-sm
-                  text-slate-500
+                  rounded-full
+                  bg-orange-50
+                  px-3
+                  py-1.5
+                  text-xs
+                  font-bold
+                  text-orange-700
                 "
               >
-                Cantidad y
-                valorización
-                histórica del
-                material enviado.
-              </p>
+                {materials.length}{" "}
+                registro
+                {materials.length ===
+                1
+                  ? ""
+                  : "s"}
+              </div>
             </div>
 
             <div
@@ -1135,22 +1624,18 @@ export function ReportsPage() {
                   text-sm
                 "
               >
-                <thead
-                  className="
-                    bg-slate-50
-                    text-xs
-                    uppercase
-                    tracking-wide
-                    text-slate-500
-                  "
-                >
+                <thead className="bg-slate-50">
                   <tr>
                     <th
                       className="
-                        px-5
+                        px-6
                         py-3
                         text-left
-                        font-semibold
+                        text-xs
+                        font-bold
+                        uppercase
+                        tracking-wide
+                        text-slate-500
                       "
                     >
                       Material
@@ -1161,7 +1646,11 @@ export function ReportsPage() {
                         px-5
                         py-3
                         text-left
-                        font-semibold
+                        text-xs
+                        font-bold
+                        uppercase
+                        tracking-wide
+                        text-slate-500
                       "
                     >
                       Categoría
@@ -1172,7 +1661,11 @@ export function ReportsPage() {
                         px-5
                         py-3
                         text-right
-                        font-semibold
+                        text-xs
+                        font-bold
+                        uppercase
+                        tracking-wide
+                        text-slate-500
                       "
                     >
                       Cantidad
@@ -1183,21 +1676,29 @@ export function ReportsPage() {
                         px-5
                         py-3
                         text-right
-                        font-semibold
+                        text-xs
+                        font-bold
+                        uppercase
+                        tracking-wide
+                        text-slate-500
                       "
                     >
-                      P. unitario
+                      Precio unitario
                     </th>
 
                     <th
                       className="
-                        px-5
+                        px-6
                         py-3
                         text-right
-                        font-semibold
+                        text-xs
+                        font-bold
+                        uppercase
+                        tracking-wide
+                        text-slate-500
                       "
                     >
-                      Total
+                      Precio total
                     </th>
                   </tr>
                 </thead>
@@ -1208,110 +1709,163 @@ export function ReportsPage() {
                       (
                         item:
                           MaterialReportItem,
-                      ) => (
-                        <tr
-                          key={
-                            item.detailId
-                          }
-                          className="
-                            border-t
-                            border-slate-100
-                            transition
-                            hover:bg-slate-50/70
-                          "
-                        >
-                          <td
+                        index,
+                      ) => {
+                        const color =
+                          CATEGORY_COLORS[
+                            index %
+                              CATEGORY_COLORS.length
+                          ];
+
+                        return (
+                          <tr
+                            key={
+                              item.detailId
+                            }
                             className="
-                              px-5
-                              py-3
+                              border-t
+                              border-slate-100
+                              transition
+                              hover:bg-slate-50
                             "
                           >
-                            <p
+                            <td
                               className="
-                                font-semibold
-                                text-slate-800
+                                px-6
+                                py-3.5
                               "
                             >
-                              {
-                                item.productName
-                              }
-                            </p>
-
-                            {(item.internalCode ||
-                              item.sku) && (
-                              <p
+                              <div
                                 className="
-                                  mt-0.5
-                                  text-xs
-                                  text-slate-400
+                                  flex
+                                  items-center
+                                  gap-3
                                 "
                               >
-                                {item.internalCode ||
-                                  item.sku}
-                              </p>
-                            )}
-                          </td>
+                                <div
+                                  className="
+                                    flex
+                                    h-9
+                                    w-9
+                                    shrink-0
+                                    items-center
+                                    justify-center
+                                    rounded-xl
+                                    bg-slate-100
+                                    text-slate-500
+                                  "
+                                >
+                                  <PackageSearch
+                                    size={17}
+                                  />
+                                </div>
 
-                          <td
-                            className="
-                              px-5
-                              py-3
-                              text-slate-600
-                            "
-                          >
-                            {
-                              item.categoryName
-                            }
-                          </td>
+                                <div>
+                                  <p
+                                    className="
+                                      font-bold
+                                      text-slate-800
+                                    "
+                                  >
+                                    {
+                                      item.productName
+                                    }
+                                  </p>
 
-                          <td
-                            className="
-                              px-5
-                              py-3
-                              text-right
-                              text-slate-700
-                            "
-                          >
-                            {formatQuantity(
-                              item.quantity,
-                            )}
+                                  {(item.internalCode ||
+                                    item.sku) && (
+                                    <p
+                                      className="
+                                        mt-0.5
+                                        text-xs
+                                        text-slate-400
+                                      "
+                                    >
+                                      {item.internalCode ||
+                                        item.sku}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
 
-                            {item.unit
-                              ? ` ${item.unit}`
-                              : ""}
-                          </td>
+                            <td
+                              className="
+                                px-5
+                                py-3.5
+                              "
+                            >
+                              <span
+                                className="
+                                  inline-flex
+                                  rounded-full
+                                  px-3
+                                  py-1
+                                  text-xs
+                                  font-bold
+                                "
+                                style={{
+                                  color,
+                                  backgroundColor:
+                                    `${color}18`,
+                                }}
+                              >
+                                {
+                                  item.categoryName
+                                }
+                              </span>
+                            </td>
 
-                          <td
-                            className="
-                              px-5
-                              py-3
-                              text-right
-                              font-medium
-                              text-slate-700
-                            "
-                          >
-                            {formatMoney(
-                              item.unitCost,
-                              item.currency,
-                            )}
-                          </td>
+                            <td
+                              className="
+                                px-5
+                                py-3.5
+                                text-right
+                                font-semibold
+                                text-slate-700
+                              "
+                            >
+                              {formatQuantity(
+                                item.quantity,
+                              )}
 
-                          <td
-                            className="
-                              px-5
-                              py-3
-                              text-right
-                              font-semibold
-                              text-slate-900
-                            "
-                          >
-                            {formatMoney(
-                              item.totalAmount,
-                              item.currency,
-                            )}
-                          </td>
-                        </tr>
-                      ),
+                              {item.unit
+                                ? ` ${item.unit}`
+                                : ""}
+                            </td>
+
+                            <td
+                              className="
+                                px-5
+                                py-3.5
+                                text-right
+                                font-semibold
+                                text-slate-700
+                              "
+                            >
+                              {formatMoney(
+                                item.unitCost,
+                                item.currency,
+                              )}
+                            </td>
+
+                            <td
+                              className="
+                                px-6
+                                py-3.5
+                                text-right
+                                font-extrabold
+                                text-slate-900
+                              "
+                            >
+                              {formatMoney(
+                                item.totalAmount,
+                                item.currency,
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      },
                     )
                   ) : (
                     <tr>
@@ -1320,17 +1874,31 @@ export function ReportsPage() {
                           5
                         }
                         className="
-                          px-5
-                          py-10
+                          px-6
+                          py-12
                           text-center
-                          text-slate-500
                         "
                       >
-                        No hay
-                        materiales
-                        para los
-                        filtros
-                        seleccionados.
+                        <PackageSearch
+                          size={30}
+                          className="
+                            mx-auto
+                            text-slate-300
+                          "
+                        />
+
+                        <p
+                          className="
+                            mt-3
+                            text-sm
+                            font-semibold
+                            text-slate-500
+                          "
+                        >
+                          No hay materiales
+                          para los filtros
+                          seleccionados.
+                        </p>
                       </td>
                     </tr>
                   )}
@@ -1338,6 +1906,36 @@ export function ReportsPage() {
               </table>
             </div>
           </section>
+
+          {Boolean(
+            report?.summary
+              .unpricedItemCount,
+          ) && (
+            <div
+              className="
+                rounded-2xl
+                border
+                border-amber-200
+                bg-amber-50
+                px-4
+                py-3
+                text-sm
+                text-amber-800
+              "
+            >
+              <strong>
+                {
+                  report!
+                    .summary
+                    .unpricedItemCount
+                }
+              </strong>{" "}
+              material(es) todavía no
+              tienen precio o moneda
+              definida y no se incluyen
+              en los totales.
+            </div>
+          )}
         </>
       )}
     </div>

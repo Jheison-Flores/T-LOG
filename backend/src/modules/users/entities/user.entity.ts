@@ -49,12 +49,11 @@ export class User {
   })
   position?: string;
 
-  @Column()
+  // Nunca se expone automáticamente en respuestas/consultas normales.
+  @Column({
+    select: false,
+  })
   password!: string;
-
-  // ============================================================
-  // ROL
-  // ============================================================
 
   @ManyToOne(() => Role, (role) => role.users, {
     eager: true,
@@ -65,10 +64,6 @@ export class User {
   })
   role!: Role;
 
-  // ============================================================
-  // ALMACÉN / MINA ASIGNADA
-  // ============================================================
-
   @ManyToOne(() => Warehouse, {
     eager: true,
     nullable: true,
@@ -78,10 +73,6 @@ export class User {
     name: 'warehouse_id',
   })
   warehouse?: Warehouse | null;
-
-  // ============================================================
-  // ESTADO
-  // ============================================================
 
   @Column({
     default: true,

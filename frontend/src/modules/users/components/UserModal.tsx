@@ -421,22 +421,6 @@ export function UserModal({
     }
 
     // ==========================================================
-    // PASSWORD EDICIÓN
-    // ==========================================================
-
-    if (
-      isEditing &&
-      password &&
-      password.length < 8
-    ) {
-      setError(
-        "La nueva contraseña debe tener al menos 8 caracteres.",
-      );
-
-      return;
-    }
-
-    // ==========================================================
     // CREAR
     // ==========================================================
 
@@ -532,15 +516,6 @@ export function UserModal({
               )
             : null,
     };
-
-    /*
-     * Solo enviamos password si
-     * realmente se escribió una nueva.
-     */
-    if (password) {
-      data.password =
-        password;
-    }
 
     onSubmit(data);
   };
@@ -833,43 +808,37 @@ export function UserModal({
               </p>
             </div>
 
-            {/* PASSWORD */}
+            {/* PASSWORD: SOLO AL CREAR */}
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                {isEditing
-                  ? "Nueva contraseña"
-                  : "Contraseña *"}
-              </label>
+            {!isEditing && (
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Contraseña *
+                </label>
 
-              <Input
-                type="password"
-                value={
-                  password
-                }
-                disabled={
-                  loading
-                }
-                placeholder={
-                  isEditing
-                    ? "Dejar vacío para conservar"
-                    : "Mínimo 8 caracteres"
-                }
-                onChange={(
-                  event,
-                ) =>
-                  setPassword(
-                    event.target.value,
-                  )
-                }
-              />
+                <Input
+                  type="password"
+                  value={
+                    password
+                  }
+                  disabled={
+                    loading
+                  }
+                  placeholder="Mínimo 8 caracteres"
+                  onChange={(
+                    event,
+                  ) =>
+                    setPassword(
+                      event.target.value,
+                    )
+                  }
+                />
 
-              {isEditing && (
                 <p className="mt-1 text-xs text-gray-400">
-                  Déjala vacía si no deseas cambiarla.
+                  Luego el usuario podrá cambiar su propia contraseña desde su cuenta.
                 </p>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 

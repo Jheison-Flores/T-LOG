@@ -9,6 +9,7 @@ import {
 } from "../services/user.service";
 
 import type {
+  ChangePasswordDto,
   CreateUserDto,
   UpdateUserDto,
 } from "../types/user.types";
@@ -83,6 +84,21 @@ export function useUpdateUser() {
           USERS_KEY,
       });
     },
+  });
+}
+
+// ============================================================
+// CAMBIAR MI CONTRASEÑA
+// ============================================================
+
+export function useChangeOwnPassword() {
+  return useMutation({
+    mutationFn: (
+      data: ChangePasswordDto,
+    ) =>
+      userService.changeOwnPassword(
+        data,
+      ),
   });
 }
 

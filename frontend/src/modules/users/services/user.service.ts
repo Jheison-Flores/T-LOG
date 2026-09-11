@@ -3,6 +3,7 @@ import {
 } from "@/services/api";
 
 import type {
+  ChangePasswordDto,
   CreateUserDto,
   UpdateUserDto,
   User,
@@ -69,6 +70,27 @@ class UserService {
     const response =
       await api.patch<User>(
         `/users/${id}`,
+        data,
+      );
+
+    return response.data;
+  }
+
+  // ============================================================
+  // CAMBIAR MI CONTRASEÑA
+  // ============================================================
+
+  async changeOwnPassword(
+    data: ChangePasswordDto,
+  ): Promise<{
+    message: string;
+  }> {
+
+    const response =
+      await api.patch<{
+        message: string;
+      }>(
+        "/users/me/password",
         data,
       );
 
