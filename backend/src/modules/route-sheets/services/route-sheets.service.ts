@@ -30,6 +30,7 @@ import { Request } from '../../requests/entities/request.entity';
 import { RequestStatus } from '../../requests/entities/request-status.enum';
 
 import { User } from '../../users/entities/user.entity';
+import { Warehouse } from '../../warehouses/entities/warehouse.entity';
 
 @Injectable()
 export class RouteSheetsService {
@@ -117,16 +118,56 @@ export class RouteSheetsService {
   // GENERAR NÚMERO
   // ============================================================
 
+  // ============================================================
+  // GENERAR NÚMERO DE HOJA DE RECORRIDO
+  // ============================================================
+
   private async generateRouteSheetNumber(
     manager: EntityManager,
+    warehouse: Warehouse,
   ): Promise<string> {
-    const year = new Date().getFullYear();
+    const configuredSeries = warehouse.guideSeries?.trim();
 
-    const total = await manager.count(RouteSheet);
+    if (!configuredSeries) {
+      throw new BadRequestException(
+        `El almacén "${warehouse.name}" no tiene una serie configurada para la numeración de documentos.`,
+      );
+    }
 
-    const correlativo = String(total + 1).padStart(6, '0');
+    const series = configuredSeries.padStart(3, '0');
 
-    return `HR-${year}-${correlativo}`;
+    if (!/^\d{3}$/.test(series)) {
+      throw new BadRequestException(
+        `La serie "${configuredSeries}" del almacén "${warehouse.name}" no es válida.`,
+      );
+    }
+
+    const prefix = `HR-${series}-`;
+
+    const lastRouteSheet = await manager
+      .getRepository(RouteSheet)
+      .createQueryBuilder('routeSheet')
+      .where('routeSheet.route_sheet_number LIKE :prefix', {
+        prefix: `${prefix}%`,
+      })
+      .orderBy('routeSheet.id', 'DESC')
+      .getOne();
+
+    let nextNumber = 1;
+
+    if (lastRouteSheet?.routeSheetNumber) {
+      const parts = lastRouteSheet.routeSheetNumber.split('-');
+
+      const lastCorrelativo = Number(parts[2]);
+
+      if (Number.isFinite(lastCorrelativo)) {
+        nextNumber = lastCorrelativo + 1;
+      }
+    }
+
+    const correlativo = String(nextNumber).padStart(6, '0');
+
+    return `${prefix}${correlativo}`;
   }
 
   // ============================================================
@@ -373,8 +414,10 @@ export class RouteSheetsService {
       // ======================================================
 
       const routeSheet = manager.create(RouteSheet, {
-        routeSheetNumber: await this.generateRouteSheetNumber(manager),
-
+        routeSheetNumber: await this.generateRouteSheetNumber(
+          manager,
+          destinationWarehouse,
+        ),
         remissionGuide: guide,
 
         request: guide.request ?? null,

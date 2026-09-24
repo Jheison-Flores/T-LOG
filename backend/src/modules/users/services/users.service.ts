@@ -15,6 +15,7 @@ import { Warehouse } from '../../warehouses/entities/warehouse.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { ChangePasswordDto } from '../dto/change-pasword.dto';
+import { UpdateProfileDto } from '../dto/update-profile.dto';
 
 @Injectable()
 export class UsersService {
@@ -274,6 +275,91 @@ export class UsersService {
     return {
       message: 'Contraseña actualizada correctamente.',
     };
+  }
+
+  async updateOwnProfile(userId: number, dto: UpdateProfileDto): Promise<User> {
+    const user = await this.findOne(userId);
+
+    // 1. Validar y actualizar email si cambió
+    if (dto.email && dto.email.trim().toLowerCase() !== user.email) {
+      const cleanEmail = dto.email.trim().toLowerCase();
+      const existingEmail = await this.usersRepository.findOne({
+        where: { email: cleanEmail },
+      });
+
+      if (existingEmail && existingEmail.id !== userId) {
+        throw new ConflictException(
+          'El correo electrónico ya está registrado por otro usuario.',
+        );
+      }
+
+      user.email = cleanEmail;
+    }
+
+    // 2. Nombres y apellidos
+    if (dto.firstName) {
+      user.firstName = dto.firstName.trim();
+    }
+
+    if (dto.lastName) {
+      user.lastName = dto.lastName.trim();
+    }
+
+    // 3. Teléfono y cargo
+    if (dto.phone !== undefined) {
+      user.phone = dto.phone?.trim() || undefined;
+    }
+
+    if (dto.position !== undefined) {
+      user.position = dto.position?.trim() || undefined;
+    }
+
+    // 4. Contraseña opcional
+    if (dto.newPassword) {
+      if (!dto.currentPassword) {
+        throw new BadRequestException(
+          'Debes ingresar tu contraseña actual para cambiarla.',
+        );
+      }
+
+      if (dto.newPassword !== dto.confirmPassword) {
+        throw new BadRequestException(
+          'La confirmación de la nueva contraseña no coincide.',
+        );
+      }
+
+      if (dto.currentPassword === dto.newPassword) {
+        throw new BadRequestException(
+          'La nueva contraseña debe ser diferente a la contraseña actual.',
+        );
+      }
+
+      const userWithPassword = await this.usersRepository
+        .createQueryBuilder('user')
+        .addSelect('user.password')
+        .where('user.id = :userId', { userId })
+        .getOne();
+
+      if (!userWithPassword) {
+        throw new NotFoundException('Usuario no encontrado.');
+      }
+
+      const validCurrentPassword = await bcrypt.compare(
+        dto.currentPassword,
+        userWithPassword.password,
+      );
+
+      if (!validCurrentPassword) {
+        throw new BadRequestException('La contraseña actual es incorrecta.');
+      }
+
+      user.password = await bcrypt.hash(dto.newPassword, 10);
+      user.mustChangePassword = false;
+    }
+
+    await this.usersRepository.save(user);
+
+    return this.findOne(userId);
   }
 
   async deactivate(id: number): Promise<User> {

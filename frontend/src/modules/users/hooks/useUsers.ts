@@ -11,6 +11,7 @@ import {
 import type {
   ChangePasswordDto,
   CreateUserDto,
+  UpdateProfileDto,
   UpdateUserDto,
 } from "../types/user.types";
 
@@ -99,6 +100,37 @@ export function useChangeOwnPassword() {
       userService.changeOwnPassword(
         data,
       ),
+  });
+}
+
+// ============================================================
+// ACTUALIZAR MI PERFIL
+// ============================================================
+
+export function useUpdateOwnProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: UpdateProfileDto) => userService.updateOwnProfile(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["users", "profile"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: USERS_KEY,
+      });
+    },
+  });
+}
+
+// ============================================================
+// OBTENER MI PERFIL
+// ============================================================
+
+export function useOwnProfile() {
+  return useQuery({
+    queryKey: ["users", "profile"],
+    queryFn: () => userService.getOwnProfile(),
   });
 }
 

@@ -75,14 +75,18 @@ export interface MaterialDispatchReport {
   materials: MaterialReportItem[];
 }
 
-interface RawDetailRow {
+export interface RawDetailRow {
   detail_id: string;
   quantity: string | number | null;
   unit_cost: string | number | null;
   total_cost: string | number | null;
   currency: string | null;
 
+  detail_description?: string | null;
+  detail_unit?: string | null;
+
   guide_id: string;
+  guide_full_number?: string | null;
   guide_transfer_start_date: Date | string | null;
 
   request_number: string | null;
@@ -91,7 +95,7 @@ interface RawDetailRow {
   warehouse_code: string | null;
   warehouse_name: string | null;
 
-  product_id: string;
+  product_id: string | null;
   product_name: string | null;
   product_internal_code: string | null;
   product_sku: string | null;
@@ -115,7 +119,7 @@ export class ReportsService {
   // USUARIO Y PERMISOS
   // ============================================================
 
-  private async getUser(userId: number): Promise<User> {
+  public async getUser(userId: number): Promise<User> {
     const user = await this.userRepository.findOne({
       where: {
         id: userId,
@@ -137,15 +141,15 @@ export class ReportsService {
     return user;
   }
 
-  private isAdmin(user: User): boolean {
+  public isAdmin(user: User): boolean {
     return user.role?.code === 'ADMIN';
   }
 
-  private isLogistics(user: User): boolean {
+  public isLogistics(user: User): boolean {
     return user.role?.code === 'LOGISTICS';
   }
 
-  private validateCanViewReports(user: User): void {
+  public validateCanViewReports(user: User): void {
     if (!this.isAdmin(user) && !this.isLogistics(user)) {
       throw new ForbiddenException(
         'No tienes permisos para consultar reportes gerenciales.',
@@ -163,7 +167,7 @@ export class ReportsService {
   // VALIDACIONES Y CONVERSIÓN
   // ============================================================
 
-  private validateDateRange(filter: ReportFilterDto): void {
+  public validateDateRange(filter: ReportFilterDto): void {
     if (!filter.from || !filter.to) {
       return;
     }
@@ -217,7 +221,7 @@ export class ReportsService {
   // Por eso guide.request debe ser LEFT JOIN.
   // ============================================================
 
-  private async getRows(
+  public async getRows(
     user: User,
     filter: ReportFilterDto,
   ): Promise<RawDetailRow[]> {
@@ -230,7 +234,7 @@ export class ReportsService {
 
       .innerJoin('guide.destinationWarehouse', 'destinationWarehouse')
 
-      .innerJoin('detail.product', 'product')
+      .leftJoin('detail.product', 'product')
 
       .leftJoin('product.category', 'category')
 
@@ -244,7 +248,13 @@ export class ReportsService {
 
       .addSelect('detail.currency', 'currency')
 
+      .addSelect('detail.description', 'detail_description')
+
+      .addSelect('detail.unit', 'detail_unit')
+
       .addSelect('guide.id', 'guide_id')
+
+      .addSelect('guide.fullNumber', 'guide_full_number')
 
       .addSelect('guide.transferStartDate', 'guide_transfer_start_date')
 
@@ -268,7 +278,11 @@ export class ReportsService {
 
       .addSelect('category.id', 'category_id')
 
-      .addSelect('category.name', 'category_name');
+      .addSelect('category.name', 'category_name')
+
+      .where('guide.status != :cancelledStatus', {
+        cancelledStatus: 'CANCELLED',
+      });
 
     // ==========================================================
     // SEGURIDAD
@@ -450,11 +464,11 @@ export class ReportsService {
 
         sku: row.product_sku ?? '',
 
-        productName: row.product_name ?? '',
+        productName: row.product_name ?? row.detail_description ?? '',
 
         categoryName,
 
-        unit: row.product_unit ?? '',
+        unit: row.product_unit ?? row.detail_unit ?? '',
 
         quantity: this.quantity(quantity),
 

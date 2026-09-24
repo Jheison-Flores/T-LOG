@@ -5,6 +5,7 @@ import {
 import type {
   ChangePasswordDto,
   CreateUserDto,
+  UpdateProfileDto,
   UpdateUserDto,
   User,
 } from "../types/user.types";
@@ -71,6 +72,35 @@ class UserService {
       await api.patch<User>(
         `/users/${id}`,
         data,
+      );
+
+    return response.data;
+  }
+
+  // ============================================================
+  // ACTUALIZAR MI PERFIL
+  // ============================================================
+
+  async updateOwnProfile(
+    data: UpdateProfileDto,
+  ): Promise<User> {
+    const response =
+      await api.patch<User>(
+        "/users/me/profile",
+        data,
+      );
+
+    return response.data;
+  }
+
+  // ============================================================
+  // OBTENER MI PERFIL
+  // ============================================================
+
+  async getOwnProfile(): Promise<User> {
+    const response =
+      await api.get<User>(
+        "/users/profile",
       );
 
     return response.data;

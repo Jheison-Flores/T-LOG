@@ -225,18 +225,49 @@ export class PurchasesService {
 
   private async generatePurchaseOrderNumber(
     manager: EntityManager,
+    warehouse: Warehouse,
   ): Promise<string> {
-    const year = new Date().getFullYear();
+    const configuredSeries = warehouse.guideSeries?.trim();
+
+    if (!configuredSeries) {
+      throw new BadRequestException(
+        `El almacén "${warehouse.name}" no tiene una serie configurada para la numeración de documentos.`,
+      );
+    }
+
+    const series = configuredSeries.padStart(3, '0');
+
+    if (!/^\d{3}$/.test(series)) {
+      throw new BadRequestException(
+        `La serie "${configuredSeries}" del almacén "${warehouse.name}" no es válida.`,
+      );
+    }
+
+    const prefix = `OC-${series}-`;
 
     const lastPurchase = await manager
       .getRepository(Purchase)
       .createQueryBuilder('purchase')
+      .where('purchase.invoiceNumber LIKE :prefix', {
+        prefix: `${prefix}%`,
+      })
       .orderBy('purchase.id', 'DESC')
       .getOne();
 
-    const nextNumber = lastPurchase ? lastPurchase.id + 1 : 1;
+    let nextNumber = 1;
 
-    return `OC-${year}-${String(nextNumber).padStart(6, '0')}`;
+    if (lastPurchase?.purchaseOrderNumber) {
+      const parts = lastPurchase.purchaseOrderNumber.split('-');
+      const lastCorrelativo = Number(parts[2]);
+
+      if (Number.isFinite(lastCorrelativo)) {
+        nextNumber = lastCorrelativo + 1;
+      }
+    }
+
+    const correlativo = String(nextNumber).padStart(6, '0');
+
+    return `${prefix}${correlativo}`;
   }
 
   // ============================================================
@@ -342,8 +373,10 @@ export class PurchasesService {
       // CABECERA
       // ======================================================
 
-      const purchaseOrderNumber =
-        await this.generatePurchaseOrderNumber(manager);
+      const purchaseOrderNumber = await this.generatePurchaseOrderNumber(
+        manager,
+        warehouse,
+      );
 
       const purchase = manager.create(Purchase, {
         purchaseOrderNumber,

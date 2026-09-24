@@ -24,6 +24,8 @@ interface AuthContextType {
   login: (data: LoginDto) => Promise<void>;
 
   logout: () => void;
+
+  updateUser: (updatedUser: Partial<AuthUser>) => void;
 }
 
 // ============================================================
@@ -106,6 +108,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   // ==========================================================
+  // ACTUALIZAR DATOS DEL USUARIO EN SESIÓN
+  // ==========================================================
+
+  function updateUser(updatedUser: Partial<AuthUser>) {
+    setUser((prev) => {
+      if (!prev) return null;
+      const next = { ...prev, ...updatedUser };
+      localStorage.setItem("user", JSON.stringify(next));
+      return next;
+    });
+  }
+
+  // ==========================================================
   // PROVIDER
   // ==========================================================
 
@@ -121,6 +136,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
 
         logout,
+
+        updateUser,
       }}
     >
       {children}

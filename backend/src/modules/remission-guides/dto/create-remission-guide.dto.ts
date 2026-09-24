@@ -11,6 +11,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+
 import { Type } from 'class-transformer';
 
 import { TransferReason } from '../entities/transfer-reason.enum';
@@ -81,11 +82,6 @@ export class CreateRemissionGuideDto {
   @IsString()
   @MaxLength(20)
   recipientRuc?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(10)
-  series?: string;
 
   @IsOptional()
   @IsDateString()

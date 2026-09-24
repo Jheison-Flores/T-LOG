@@ -10,31 +10,23 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 
 import { RemissionGuide } from '../entities/remission-guide.entity';
-
 import { RemissionGuideDetail } from '../entities/remission-guide-detail.entity';
-
 import { RemissionGuideStatus } from '../entities/remission-guide-status.enum';
-
 import { CreateRemissionGuideDto } from '../dto/create-remission-guide.dto';
 
 import { Request } from '../../requests/entities/request.entity';
-
 import { RequestDetail } from '../../requests/entities/request-detail.entity';
-
 import { RequestStatus } from '../../requests/entities/request-status.enum';
 
 import { Warehouse } from '../../warehouses/entities/warehouse.entity';
-
 import { User } from '../../users/entities/user.entity';
 
 import { StockMovementsService } from '../../stock-movements/services/stock.movements.service';
-
 import { MovementType } from '../../stock-movements/entities/movement-type.enum';
 
 import { SettingsService } from '../../settings/services/settings.services';
 
 import { PurchaseDetail } from '../../purchases/entities/purchase-detail.entity';
-
 import { PurchaseCurrency } from '../../purchases/entities/purchase-currency.enum';
 
 import { Product } from '../../products/entities/product.entity';
@@ -88,7 +80,6 @@ export class RemissionGuidesService {
 
       relations: {
         role: true,
-
         warehouse: true,
       },
     });
@@ -105,16 +96,12 @@ export class RemissionGuidesService {
   }
 
   // ============================================================
-  // ADMIN
+  // ROLES
   // ============================================================
 
   private isAdmin(user: User): boolean {
     return user.role?.code === 'ADMIN';
   }
-
-  // ============================================================
-  // LOGISTICS
-  // ============================================================
 
   private isLogistics(user: User): boolean {
     return user.role?.code === 'LOGISTICS';
@@ -122,8 +109,6 @@ export class RemissionGuidesService {
 
   // ============================================================
   // PERMISOS
-  //
-  // ADMIN + LOGISTICS pueden generar Guías.
   // ============================================================
 
   private validateCanManage(user: User): void {
@@ -147,25 +132,21 @@ export class RemissionGuidesService {
   private async getCentralWarehouse(
     manager: EntityManager,
   ): Promise<Warehouse> {
-    // ==========================================================
-    // PRIMERO INTENTAMOS CONFIGURACIÓN
-    // ==========================================================
-
     const settings = await this.settingsService.getSettings();
 
     if (settings.centralWarehouse) {
       const configuredWarehouse = settings.centralWarehouse;
-
-      // ========================================================
-      // SI YA VIENE COMO OBJETO WAREHOUSE
-      // ========================================================
 
       if (
         typeof configuredWarehouse === 'object' &&
         configuredWarehouse !== null
       ) {
         const configuredId = Number(
-          (configuredWarehouse as { id?: number | string }).id,
+          (
+            configuredWarehouse as {
+              id?: number | string;
+            }
+          ).id,
         );
 
         if (Number.isFinite(configuredId) && configuredId > 0) {
@@ -181,7 +162,11 @@ export class RemissionGuidesService {
         }
 
         const configuredCode = String(
-          (configuredWarehouse as { code?: string }).code ?? '',
+          (
+            configuredWarehouse as {
+              code?: string;
+            }
+          ).code ?? '',
         ).trim();
 
         if (configuredCode) {
@@ -198,10 +183,6 @@ export class RemissionGuidesService {
           }
         }
       }
-
-      // ========================================================
-      // COMPATIBILIDAD SI EN ALGÚN ENTORNO VIENE COMO ID O CÓDIGO
-      // ========================================================
 
       if (
         typeof configuredWarehouse === 'string' ||
@@ -239,10 +220,6 @@ export class RemissionGuidesService {
       }
     }
 
-    // ==========================================================
-    // FALLBACK POR TYPE
-    // ==========================================================
-
     const centralWarehouse = await manager
       .getRepository(Warehouse)
       .createQueryBuilder('warehouse')
@@ -262,13 +239,111 @@ export class RemissionGuidesService {
   }
 
   // ============================================================
-  // ALCANCE DEL REQUERIMIENTO
+  // ORIGEN DE LA GUÍA
   //
   // ADMIN:
-  // cualquiera.
+  //    Lima / almacén central.
   //
   // LOGISTICS:
-  // exclusivamente requerimientos de su propia unidad.
+  //    automáticamente su warehouse asignado.
+  //
+  // NUNCA se recibe sourceWarehouseId desde el frontend.
+  // ============================================================
+
+  private async getSourceWarehouse(
+    user: User,
+    manager: EntityManager,
+  ): Promise<Warehouse> {
+    if (this.isAdmin(user)) {
+      return this.getCentralWarehouse(manager);
+    }
+
+    if (this.isLogistics(user)) {
+      if (!user.warehouse) {
+        throw new BadRequestException(
+          'El usuario LOGISTICS no tiene una unidad o almacén asignado.',
+        );
+      }
+
+      const warehouse = await manager.findOne(Warehouse, {
+        where: {
+          id: user.warehouse.id,
+        },
+      });
+
+      if (!warehouse) {
+        throw new NotFoundException(
+          'El almacén asignado al usuario no existe.',
+        );
+      }
+
+      if (!warehouse.isActive) {
+        throw new BadRequestException(
+          'El almacén asignado al usuario se encuentra inactivo.',
+        );
+      }
+
+      return warehouse;
+    }
+
+    throw new ForbiddenException(
+      'No tienes permisos para emitir Guías de Remisión.',
+    );
+  }
+
+  // ============================================================
+  // SERIE
+  //
+  // Lima mantiene 002.
+  //
+  // Para LOGISTICS se genera una serie propia basada en
+  // el ID del almacén.
+  //
+  // Ejemplo:
+  // Lima      -> 002
+  // Warehouse 3 -> 003
+  // Warehouse 4 -> 004
+  // Warehouse 5 -> 005
+  //
+  // Esto evita que dos almacenes compartan correlativo.
+  // ============================================================
+
+  // ============================================================
+  // SERIE DE LA GUÍA
+  //
+  // Cada almacén tiene su propia serie configurada en Warehouse.
+  //
+  // Poderosa -> 001
+  // Lima     -> 002
+  // Orex     -> 003
+  // Kolpa    -> 004
+  //
+  // IMPORTANTE:
+  // La serie NO se obtiene del ID del almacén.
+  // Se obtiene de warehouse.guideSeries.
+  // ============================================================
+
+  private getGuideSeries(sourceWarehouse: Warehouse): string {
+    const configuredSeries = sourceWarehouse.guideSeries?.trim();
+
+    if (!configuredSeries) {
+      throw new BadRequestException(
+        `El almacén "${sourceWarehouse.name}" no tiene una serie configurada para las Guías de Remisión.`,
+      );
+    }
+
+    const normalizedSeries = configuredSeries.padStart(3, '0');
+
+    if (!/^\d{3}$/.test(normalizedSeries)) {
+      throw new BadRequestException(
+        `La serie "${configuredSeries}" configurada para el almacén "${sourceWarehouse.name}" no es válida. Debe ser numérica, por ejemplo 001, 002, 003 o 004.`,
+      );
+    }
+
+    return normalizedSeries;
+  }
+  // ============================================================
+  // ALCANCE DEL REQUERIMIENTO
   // ============================================================
 
   private validateRequestScope(user: User, request: Request): void {
@@ -292,8 +367,18 @@ export class RemissionGuidesService {
   // ============================================================
   // ALCANCE DE LA GUÍA
   //
-  // LOGISTICS solo puede visualizar operaciones donde
-  // su warehouse participa.
+  // LOGISTICS puede participar como:
+  //
+  // ORIGEN
+  // o
+  // DESTINO
+  //
+  // Esto permite:
+  //
+  // Lima -> Mina
+  // Mina -> Lima
+  // Mina -> Mina
+  // Mina -> Externo
   // ============================================================
 
   private validateGuideScope(
@@ -371,21 +456,12 @@ export class RemissionGuidesService {
   private getPendingQuantity(detail: RequestDetail): number {
     return Math.max(
       0,
-
       this.getApprovedQuantity(detail) - this.getDeliveredQuantity(detail),
     );
   }
 
   // ============================================================
-  // ÚLTIMO PRECIO DE COMPRA DEL PRODUCTO
-  //
-  // Regla de negocio:
-  // - No usa product.currentPrice.
-  // - Busca la última O.C. que contenga el producto.
-  // - Toma PurchaseDetail.unitPrice.
-  //
-  // Este precio funciona como FALLBACK cuando el producto
-  // todavía no tiene una entrada valorizada en inventario.
+  // ÚLTIMA COMPRA
   // ============================================================
 
   private async getLatestPurchaseValuation(
@@ -403,7 +479,7 @@ export class RemissionGuidesService {
       .where('purchaseProduct.id = :productId', {
         productId,
       })
-      .orderBy('purchase.purchaseDate', 'DESC', 'NULLS LAST')
+      .orderBy('purchase.purchaseDate', 'DESC')
       .addOrderBy('purchase.id', 'DESC')
       .addOrderBy('purchaseDetail.id', 'DESC')
       .getOne();
@@ -434,12 +510,7 @@ export class RemissionGuidesService {
   }
 
   // ============================================================
-  // VALORIZACIÓN PARA DESPACHO
-  //
-  // PRIORIDAD:
-  // 1. Última valorización válida del inventario de origen.
-  // 2. Último precio + moneda de la O.C. del producto.
-  // 3. null si no existe valorización válida.
+  // VALORIZACIÓN
   // ============================================================
 
   private async getDispatchValuation(
@@ -466,6 +537,12 @@ export class RemissionGuidesService {
 
   // ============================================================
   // CORRELATIVO
+  //
+  // Cada serie tiene su propia numeración.
+  //
+  // 002 -> 000001, 000002...
+  // 003 -> 000001, 000002...
+  // 004 -> 000001, 000002...
   // ============================================================
 
   private async generateGuideNumber(
@@ -475,7 +552,7 @@ export class RemissionGuidesService {
     guideNumber: string;
     fullNumber: string;
   }> {
-    const normalizedSeries = (series || '002').trim().padStart(3, '0');
+    const normalizedSeries = series.trim().padStart(3, '0');
 
     const lastGuide = await manager
       .getRepository(RemissionGuide)
@@ -500,31 +577,11 @@ export class RemissionGuidesService {
 
     return {
       guideNumber,
-
       fullNumber: `${normalizedSeries}-${guideNumber}`,
     };
   }
-
   // ============================================================
   // CREAR GUÍA
-  //
-  // REQUEST:
-  // - nace de requerimiento.
-  // - destino = mina del requerimiento.
-  // - TRANSFER Lima -> mina.
-  // - actualiza deliveredQuantity y estado del requerimiento.
-  //
-  // MANUAL_WAREHOUSE:
-  // - no tiene requerimiento.
-  // - destino = almacén/mina seleccionada.
-  // - productos registrados.
-  // - TRANSFER Lima -> mina.
-  //
-  // EXTERNAL_SERVICE:
-  // - no tiene requerimiento.
-  // - no tiene destinationWarehouse.
-  // - admite producto registrado o descripción libre.
-  // - NO modifica stock.
   // ============================================================
 
   async create(
@@ -538,13 +595,35 @@ export class RemissionGuidesService {
 
       this.validateCanManage(user);
 
-      const sourceWarehouse = await this.getCentralWarehouse(manager);
+      // ======================================================
+      // AQUÍ ESTÁ EL CAMBIO PRINCIPAL
+      //
+      // ADMIN    -> Lima
+      // LOGISTICS -> su propia mina/unidad
+      // ======================================================
+
+      const sourceWarehouse = await this.getSourceWarehouse(user, manager);
+
+      // ======================================================
+      // CENTRAL
+      //
+      // Solo se usa para determinar la serie de Lima.
+      // ======================================================
+
+      const centralWarehouse = await this.getCentralWarehouse(manager);
+
+      // ======================================================
+      // SERIE AUTOMÁTICA
+      // ======================================================
+
+      const series = this.getGuideSeries(sourceWarehouse);
 
       let request: Request | null = null;
+
       let destinationWarehouse: Warehouse | null = null;
 
       // ======================================================
-      // TIPO REQUEST
+      // REQUEST
       // ======================================================
 
       if (dto.guideType === RemissionGuideType.REQUEST) {
@@ -558,8 +637,10 @@ export class RemissionGuidesService {
           where: {
             id: dto.requestId,
           },
+
           relations: {
             warehouse: true,
+
             details: {
               product: true,
             },
@@ -571,6 +652,7 @@ export class RemissionGuidesService {
         }
 
         this.validateRequestStatus(request);
+
         this.validateRequestScope(user, request);
 
         destinationWarehouse = request.warehouse;
@@ -585,7 +667,7 @@ export class RemissionGuidesService {
       }
 
       // ======================================================
-      // TIPO MANUAL_WAREHOUSE
+      // MANUAL_WAREHOUSE
       // ======================================================
 
       if (dto.guideType === RemissionGuideType.MANUAL_WAREHOUSE) {
@@ -615,7 +697,7 @@ export class RemissionGuidesService {
 
         if (sourceWarehouse.id === destinationWarehouse.id) {
           throw new BadRequestException(
-            'El almacén central de Lima no puede ser también el destino.',
+            'El almacén de origen y destino no pueden ser el mismo.',
           );
         }
 
@@ -623,7 +705,7 @@ export class RemissionGuidesService {
       }
 
       // ======================================================
-      // TIPO EXTERNAL_SERVICE
+      // EXTERNAL_SERVICE
       // ======================================================
 
       if (dto.guideType === RemissionGuideType.EXTERNAL_SERVICE) {
@@ -639,15 +721,19 @@ export class RemissionGuidesService {
           );
         }
 
-        if (
-          this.isLogistics(user) &&
-          user.warehouse?.id !== sourceWarehouse.id
-        ) {
-          throw new ForbiddenException(
-            'Solo ADMIN o LOGISTICS del almacén central pueden emitir guías de servicio externo desde Lima.',
-          );
-        }
+        // ==================================================
+        // YA NO EXISTE LA RESTRICCIÓN:
+        //
+        // "Solo Lima puede enviar a externo"
+        //
+        // Cualquier LOGISTICS puede hacerlo desde
+        // su propio almacén.
+        // ==================================================
       }
+
+      // ======================================================
+      // VALIDAR TIPO
+      // ======================================================
 
       if (
         dto.guideType !== RemissionGuideType.REQUEST &&
@@ -669,6 +755,10 @@ export class RemissionGuidesService {
         );
       }
 
+      // ======================================================
+      // REQUEST
+      // ======================================================
+
       if (dto.guideType === RemissionGuideType.REQUEST) {
         const requestDetailIds = dto.details.map(
           (detail) => detail.requestDetailId,
@@ -686,6 +776,10 @@ export class RemissionGuidesService {
           );
         }
       }
+
+      // ======================================================
+      // MANUAL
+      // ======================================================
 
       if (dto.guideType === RemissionGuideType.MANUAL_WAREHOUSE) {
         const productIds = dto.details.map((detail) => detail.productId);
@@ -709,11 +803,11 @@ export class RemissionGuidesService {
 
       const { guideNumber, fullNumber } = await this.generateGuideNumber(
         manager,
-        dto.series || '002',
+        series,
       );
 
       // ======================================================
-      // DATOS DOCUMENTALES
+      // DOCUMENTACIÓN
       // ======================================================
 
       const arrivalPoint =
@@ -733,10 +827,15 @@ export class RemissionGuidesService {
           ? dto.recipientRuc?.trim() || null
           : null;
 
+      // ======================================================
+      // CREAR GUÍA
+      // ======================================================
+
       const guide = manager.create(RemissionGuide, {
         guideType: dto.guideType,
 
-        series: (dto.series || '002').trim().padStart(3, '0'),
+        // Serie calculada por backend
+        series,
 
         guideNumber,
 
@@ -744,6 +843,7 @@ export class RemissionGuidesService {
 
         request,
 
+        // ORIGEN REAL
         sourceWarehouse,
 
         destinationWarehouse,
@@ -752,6 +852,7 @@ export class RemissionGuidesService {
 
         transferStartDate: dto.transferStartDate,
 
+        // Sale del almacén real
         departurePoint: sourceWarehouse.address || sourceWarehouse.name,
 
         arrivalPoint,
@@ -821,8 +922,11 @@ export class RemissionGuidesService {
         }
 
         let requestDetail: RequestDetail | null = null;
+
         let product: Product | null = null;
+
         let description: string | null = null;
+
         let unit: string | null = null;
 
         // ====================================================
@@ -856,12 +960,14 @@ export class RemissionGuidesService {
           }
 
           product = requestDetail.product;
+
           description = requestDetail.product.name;
+
           unit = String(requestDetail.product.unit);
         }
 
         // ====================================================
-        // MANUAL A MINA
+        // MANUAL
         // ====================================================
 
         if (dto.guideType === RemissionGuideType.MANUAL_WAREHOUSE) {
@@ -884,11 +990,12 @@ export class RemissionGuidesService {
           }
 
           description = product.name;
+
           unit = String(product.unit);
         }
 
         // ====================================================
-        // SERVICIO EXTERNO
+        // EXTERNAL SERVICE
         // ====================================================
 
         if (dto.guideType === RemissionGuideType.EXTERNAL_SERVICE) {
@@ -924,11 +1031,8 @@ export class RemissionGuidesService {
         // ====================================================
         // VALORIZACIÓN
         //
-        // Primero intentamos obtener el costo realmente conocido
-        // en el inventario del almacén central.
-        //
-        // Si todavía no existe:
-        // usamos la última O.C. como respaldo.
+        // MUY IMPORTANTE:
+        // ahora utiliza el almacén REAL de origen.
         // ====================================================
 
         const valuation = product
@@ -947,7 +1051,7 @@ export class RemissionGuidesService {
           unitCost !== null ? Number((quantity * unitCost).toFixed(2)) : null;
 
         // ====================================================
-        // SNAPSHOT DEL DETALLE
+        // DETALLE
         // ====================================================
 
         const guideDetail = manager.create(RemissionGuideDetail, {
@@ -982,11 +1086,11 @@ export class RemissionGuidesService {
         // ====================================================
         // INVENTARIO
         //
-        // REQUEST y MANUAL_WAREHOUSE:
-        // TRANSFER Lima -> mina.
+        // Mina -> Lima
+        // Mina -> Mina
+        // Lima -> Mina
         //
-        // EXTERNAL_SERVICE:
-        // deliberadamente NO modifica stock.
+        // Se utiliza sourceWarehouse real.
         // ====================================================
 
         if (
@@ -1018,6 +1122,10 @@ export class RemissionGuidesService {
           );
         }
 
+        // ====================================================
+        // ACTUALIZAR REQUERIMIENTO
+        // ====================================================
+
         if (dto.guideType === RemissionGuideType.REQUEST && requestDetail) {
           const currentDelivered = this.getDeliveredQuantity(requestDetail);
 
@@ -1028,12 +1136,12 @@ export class RemissionGuidesService {
       }
 
       // ======================================================
-      // ACTUALIZAR ESTADO DEL REQUERIMIENTO
-      // SOLO PARA GUIDE TYPE REQUEST
+      // ESTADO DEL REQUERIMIENTO
       // ======================================================
 
       if (dto.guideType === RemissionGuideType.REQUEST && request) {
         let allDelivered = true;
+
         let someDelivered = false;
 
         for (const detail of request.details) {
@@ -1089,6 +1197,11 @@ export class RemissionGuidesService {
       .leftJoinAndSelect('details.product', 'product')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('details.requestDetail', 'requestDetail');
+
+    // ==========================================================
+    // LOGISTICS:
+    // solo ve guías donde participa su unidad.
+    // ==========================================================
 
     if (this.isLogistics(user)) {
       if (!user.warehouse) {
@@ -1149,6 +1262,10 @@ export class RemissionGuidesService {
     if (!guide) {
       throw new NotFoundException('Guía de Remisión no encontrada.');
     }
+
+    // ==========================================================
+    // LOGISTICS SOLO PUEDE VER GUÍAS DE SU UNIDAD
+    // ==========================================================
 
     if (this.isLogistics(user)) {
       if (!user.warehouse) {

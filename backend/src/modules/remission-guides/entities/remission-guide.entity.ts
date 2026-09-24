@@ -30,13 +30,26 @@ export class RemissionGuide {
   })
   guideType!: RemissionGuideType;
 
-  @Column({ type: 'varchar', length: 10, default: '002' })
+  @Column({
+    type: 'varchar',
+    length: 10,
+    default: '001',
+  })
   series!: string;
 
-  @Column({ name: 'guide_number', type: 'varchar', length: 20 })
+  @Column({
+    name: 'guide_number',
+    type: 'varchar',
+    length: 20,
+  })
   guideNumber!: string;
 
-  @Column({ name: 'full_number', type: 'varchar', length: 40, unique: true })
+  @Column({
+    name: 'full_number',
+    type: 'varchar',
+    length: 40,
+    unique: true,
+  })
   fullNumber!: string;
 
   @ManyToOne(() => Request, {
@@ -63,19 +76,37 @@ export class RemissionGuide {
   @JoinColumn({ name: 'destination_warehouse_id' })
   destinationWarehouse?: Warehouse | null;
 
-  @Column({ name: 'issue_date', type: 'date' })
+  @Column({
+    name: 'issue_date',
+    type: 'date',
+  })
   issueDate!: string;
 
-  @Column({ name: 'transfer_start_date', type: 'date' })
+  @Column({
+    name: 'transfer_start_date',
+    type: 'date',
+  })
   transferStartDate!: string;
 
-  @Column({ name: 'departure_point', type: 'varchar', length: 300 })
+  @Column({
+    name: 'departure_point',
+    type: 'varchar',
+    length: 300,
+  })
   departurePoint!: string;
 
-  @Column({ name: 'arrival_point', type: 'varchar', length: 300 })
+  @Column({
+    name: 'arrival_point',
+    type: 'varchar',
+    length: 300,
+  })
   arrivalPoint!: string;
 
-  @Column({ name: 'recipient_name', type: 'varchar', length: 200 })
+  @Column({
+    name: 'recipient_name',
+    type: 'varchar',
+    length: 200,
+  })
   recipientName!: string;
 
   @Column({
@@ -167,7 +198,10 @@ export class RemissionGuide {
   })
   otherTransferReason?: string | null;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({
+    type: 'text',
+    nullable: true,
+  })
   observations?: string | null;
 
   @Column({

@@ -4,6 +4,7 @@ import { Lock, User } from "lucide-react";
 
 import { Button, Card, Input } from "@/components/ui";
 import { useAuth } from "../contexts/AuthContexts";
+import logoImg from "@/assets/logo-teincomin.png";
 
 export function LoginPage() {
   const { login, isAuthenticated } = useAuth();
@@ -55,15 +56,13 @@ export function LoginPage() {
         <div className="w-105">
 
           <div className="text-center mb-8">
-
-            <h1 className="text-4xl font-bold text-orange-500">
-              T-LOG
-            </h1>
-
-            <p className="text-gray-500 mt-2">
-              Sistema Logístico TEINCOMIN
-            </p>
-
+            <div className="flex justify-center mb-3">
+              <img
+                src={logoImg}
+                alt="TEINCOMIN"
+                className="h-16 w-auto object-contain"
+              />
+            </div>
           </div>
 
           <form

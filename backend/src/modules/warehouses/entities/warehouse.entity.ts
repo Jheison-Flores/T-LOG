@@ -31,6 +31,25 @@ export class Warehouse {
   })
   type!: WarehouseType;
 
+  /**
+   * Serie de las Guías de Remisión que se generan
+   * desde este almacén.
+   *
+   * Ejemplos:
+   * Poderosa = 001
+   * Lima     = 002
+   * Orex     = 003
+   * Kolpa    = 004
+   */
+  @Column({
+    name: 'guide_series',
+    type: 'varchar',
+    length: 10,
+    unique: true,
+    nullable: true,
+  })
+  guideSeries?: string | null;
+
   @Column({
     nullable: true,
     length: 150,

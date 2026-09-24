@@ -8,12 +8,14 @@ import {
   CircleDollarSign,
   ClipboardList,
   Coins,
+  FileSpreadsheet,
   PackageSearch,
   RefreshCw,
   Search,
 } from "lucide-react";
 
 import {
+  useDownloadMaterialDispatchExcel,
   useMaterialDispatchFilterOptions,
   useMaterialDispatchReport,
 } from "../hooks/useReports";
@@ -553,6 +555,19 @@ export function ReportsPage() {
       );
     };
 
+  const {
+    download: downloadExcel,
+    isDownloading: isDownloadingExcel,
+  } = useDownloadMaterialDispatchExcel();
+
+  const handleDownloadExcel = async () => {
+    try {
+      await downloadExcel(appliedFilters);
+    } catch {
+      alert("Ocurrió un error al descargar el reporte de valorización en Excel.");
+    }
+  };
+
   return (
     <div
       className="
@@ -609,50 +624,84 @@ export function ReportsPage() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() =>
-            refetch()
-          }
-          disabled={
-            isFetching
-          }
-          className="
-            inline-flex
-            items-center
-            justify-center
-            gap-2
-            self-start
-            rounded-xl
-            border
-            border-slate-200
-            bg-white
-            px-4
-            py-2.5
-            text-sm
-            font-semibold
-            text-slate-700
-            shadow-sm
-            transition
-            hover:border-orange-200
-            hover:bg-orange-50
-            hover:text-orange-700
-            disabled:cursor-not-allowed
-            disabled:opacity-60
-            lg:self-auto
-          "
-        >
-          <RefreshCw
-            size={16}
-            className={
-              isFetching
-                ? "animate-spin"
-                : ""
-            }
-          />
+        <div className="flex flex-wrap items-center gap-2.5 self-start lg:self-auto">
+          <button
+            type="button"
+            onClick={handleDownloadExcel}
+            disabled={isDownloadingExcel || loadingReport}
+            className="
+              inline-flex
+              items-center
+              justify-center
+              gap-2
+              rounded-xl
+              border
+              border-emerald-600
+              bg-emerald-600
+              px-4
+              py-2.5
+              text-sm
+              font-semibold
+              text-white
+              shadow-sm
+              transition
+              hover:bg-emerald-700
+              hover:border-emerald-700
+              disabled:cursor-not-allowed
+              disabled:opacity-60
+            "
+            title="Descargar reporte en formato Excel"
+          >
+            <FileSpreadsheet
+              size={16}
+              className={isDownloadingExcel ? "animate-pulse" : ""}
+            />
+            {isDownloadingExcel ? "Descargando..." : "Descargar Excel"}
+          </button>
 
-          Actualizar
-        </button>
+          <button
+            type="button"
+            onClick={() =>
+              refetch()
+            }
+            disabled={
+              isFetching
+            }
+            className="
+              inline-flex
+              items-center
+              justify-center
+              gap-2
+              rounded-xl
+              border
+              border-slate-200
+              bg-white
+              px-4
+              py-2.5
+              text-sm
+              font-semibold
+              text-slate-700
+              shadow-sm
+              transition
+              hover:border-orange-200
+              hover:bg-orange-50
+              hover:text-orange-700
+              disabled:cursor-not-allowed
+              disabled:opacity-60
+            "
+          >
+            <RefreshCw
+              size={16}
+              className={
+                isFetching
+                  ? "animate-spin"
+                  : ""
+              }
+            />
+
+            Actualizar
+          </button>
+        </div>
       </div>
 
       {/* =======================================================

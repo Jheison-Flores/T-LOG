@@ -1,12 +1,14 @@
-import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Req, Res, UseGuards } from '@nestjs/common';
 
-import type { Request as ExpressRequest } from 'express';
+import type { Request as ExpressRequest, Response } from 'express';
 
 import {
   MaterialDispatchFilterOptions,
   MaterialDispatchReport,
   ReportsService,
 } from '../services/reports.service';
+
+import { ReportsExportService } from '../services/reports-export.service';
 
 import { ReportFilterDto } from '../dto/report-filter.dto';
 
@@ -30,7 +32,10 @@ interface RequestWithUser extends ExpressRequest {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN', 'LOGISTICS')
 export class ReportsController {
-  constructor(private readonly reportsService: ReportsService) {}
+  constructor(
+    private readonly reportsService: ReportsService,
+    private readonly reportsExportService: ReportsExportService,
+  ) {}
 
   // ============================================================
   // OPCIONES DE FILTRO
@@ -45,6 +50,44 @@ export class ReportsController {
     req: RequestWithUser,
   ): Promise<MaterialDispatchFilterOptions> {
     return this.reportsService.getMaterialDispatchFilterOptions(req.user.id);
+  }
+
+  // ============================================================
+  // EXPORTAR EXCEL DE MATERIALES ENVIADOS (FORMATO MATRIZ)
+  // ============================================================
+
+  @Get('material-dispatch/export/excel')
+  async exportMaterialDispatchExcel(
+    @Req()
+    req: RequestWithUser,
+
+    @Query()
+    filter: ReportFilterDto,
+
+    @Res()
+    res: Response,
+  ): Promise<void> {
+    const buffer =
+      await this.reportsExportService.generateMaterialDispatchExcel(
+        req.user.id,
+        filter,
+      );
+
+    const filename = await this.reportsExportService.getExportFileName(
+      req.user.id,
+      filter,
+    );
+
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+
+      'Content-Disposition': `attachment; filename="${filename}"`,
+
+      'Content-Length': buffer.length,
+    });
+
+    res.end(buffer);
   }
 
   // ============================================================

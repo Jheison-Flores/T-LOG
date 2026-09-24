@@ -29,9 +29,7 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 interface RequestWithUser extends ExpressRequest {
   user: {
     id: number;
-
     email?: string;
-
     role?: string;
   };
 }
@@ -47,7 +45,7 @@ export class RemissionGuidesController {
   ) {}
 
   // ============================================================
-  // CREAR GUÍA
+  // CREAR
   // ============================================================
 
   @Post()
@@ -62,7 +60,7 @@ export class RemissionGuidesController {
   }
 
   // ============================================================
-  // LISTAR GUÍAS
+  // LISTAR
   // ============================================================
 
   @Get()
@@ -74,10 +72,7 @@ export class RemissionGuidesController {
   }
 
   // ============================================================
-  // EXPORTAR PDF
-  //
-  // IMPORTANTE:
-  // DEBE ESTAR ANTES DE @Get(':id')
+  // PDF
   // ============================================================
 
   @Get(':id/export/pdf')
@@ -110,10 +105,7 @@ export class RemissionGuidesController {
   }
 
   // ============================================================
-  // EXPORTAR EXCEL
-  //
-  // IMPORTANTE:
-  // TAMBIÉN VA ANTES DE @Get(':id')
+  // EXCEL
   // ============================================================
 
   @Get(':id/export/excel')
@@ -147,7 +139,7 @@ export class RemissionGuidesController {
   }
 
   // ============================================================
-  // OBTENER UNA GUÍA
+  // OBTENER
   // ============================================================
 
   @Get(':id')

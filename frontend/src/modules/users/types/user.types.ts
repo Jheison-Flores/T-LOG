@@ -51,3 +51,14 @@ export interface ChangePasswordDto {
   newPassword: string;
   confirmPassword: string;
 }
+
+export interface UpdateProfileDto {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  position?: string;
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+}

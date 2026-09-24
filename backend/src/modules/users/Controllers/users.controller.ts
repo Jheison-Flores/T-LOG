@@ -14,6 +14,7 @@ import { UsersService } from '../services/users.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { ChangePasswordDto } from '../dto/change-pasword.dto';
+import { UpdateProfileDto } from '../dto/update-profile.dto';
 
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
@@ -32,10 +33,19 @@ interface AuthenticatedRequest {
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // Cualquier usuario autenticado puede ver su perfil.
+  // Cualquier usuario autenticado puede ver su perfil completo.
   @Get('profile')
   profile(@Request() req: AuthenticatedRequest) {
-    return req.user;
+    return this.usersService.findOne(req.user.id);
+  }
+
+  // Cualquier usuario autenticado (incluido Logística) puede actualizar sus datos, correo y contraseña.
+  @Patch('me/profile')
+  updateOwnProfile(
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.usersService.updateOwnProfile(req.user.id, dto);
   }
 
   // Cualquier usuario autenticado puede cambiar SOLO su contraseña.

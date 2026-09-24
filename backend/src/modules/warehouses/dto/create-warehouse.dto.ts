@@ -3,7 +3,9 @@ import {
   IsEnum,
   IsNotEmpty,
   IsOptional,
+  IsString,
   Length,
+  Matches,
 } from 'class-validator';
 
 import { WarehouseType } from '../entities/warehouse-type.enum';
@@ -19,6 +21,13 @@ export class CreateWarehouseDto {
 
   @IsEnum(WarehouseType)
   type!: WarehouseType;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{3}$/, {
+    message: 'La serie de guía debe contener exactamente 3 dígitos.',
+  })
+  remissionGuideSeries?: string;
 
   @IsOptional()
   city?: string;

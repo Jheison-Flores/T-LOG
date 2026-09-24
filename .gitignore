@@ -97,6 +97,7 @@ desktop.ini
 *.bak
 *.swp
 *.swo
+*.rrhh_backup
 
 temp/
 tmp/

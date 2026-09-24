@@ -21,8 +21,8 @@ import {
 } from "@/modules/auth/contexts/AuthContexts";
 
 import {
-  ChangePasswordModal,
-} from "@/modules/users/components/ChangePasswordModal";
+  UserProfileModal,
+} from "@/modules/users/components/UserProfileModal";
 
 export function Navbar() {
   // ============================================================
@@ -46,10 +46,16 @@ export function Navbar() {
     useState(false);
 
   const [
-    passwordModalOpen,
-    setPasswordModalOpen,
+    profileModalOpen,
+    setProfileModalOpen,
   ] =
     useState(false);
+
+  const [
+    profileModalTab,
+    setProfileModalTab,
+  ] =
+    useState<"profile" | "security">("profile");
 
   const accountRef =
     useRef<HTMLDivElement | null>(
@@ -370,13 +376,9 @@ export function Navbar() {
                 <button
                   type="button"
                   onClick={() => {
-                    setAccountOpen(
-                      false,
-                    );
-
-                    setPasswordModalOpen(
-                      true,
-                    );
+                    setAccountOpen(false);
+                    setProfileModalTab("profile");
+                    setProfileModalOpen(true);
                   }}
                   className="
                     flex
@@ -384,7 +386,7 @@ export function Navbar() {
                     items-center
                     gap-3
                     px-4
-                    py-3
+                    py-2.5
                     text-sm
                     font-medium
                     text-gray-700
@@ -393,12 +395,33 @@ export function Navbar() {
                     hover:text-orange-700
                   "
                 >
-                  <KeyRound
-                    size={
-                      17
-                    }
-                  />
+                  <UserCircle2 size={17} />
+                  Mi Perfil
+                </button>
 
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountOpen(false);
+                    setProfileModalTab("security");
+                    setProfileModalOpen(true);
+                  }}
+                  className="
+                    flex
+                    w-full
+                    items-center
+                    gap-3
+                    px-4
+                    py-2.5
+                    text-sm
+                    font-medium
+                    text-gray-700
+                    transition
+                    hover:bg-orange-50
+                    hover:text-orange-700
+                  "
+                >
+                  <KeyRound size={17} />
                   Cambiar contraseña
                 </button>
               </div>
@@ -432,18 +455,13 @@ export function Navbar() {
       </header>
 
       {/* =======================================================
-          MODAL CAMBIO DE CONTRASEÑA
+          MODAL DE PERFIL Y SEGURIDAD
       ======================================================= */}
 
-      <ChangePasswordModal
-        open={
-          passwordModalOpen
-        }
-        onClose={() =>
-          setPasswordModalOpen(
-            false,
-          )
-        }
+      <UserProfileModal
+        open={profileModalOpen}
+        initialTab={profileModalTab}
+        onClose={() => setProfileModalOpen(false)}
       />
     </>
   );

@@ -69,12 +69,51 @@ export class RequestsService {
   // GENERAR NÚMERO DE REQUERIMIENTO
   // ============================================================
 
-  private async generateRequestNumber(manager: EntityManager): Promise<string> {
-    const total = await manager.count(Request);
+  private async generateRequestNumber(
+    manager: EntityManager,
+    warehouse: Warehouse,
+  ): Promise<string> {
+    const configuredSeries = warehouse.guideSeries?.trim();
 
-    const correlativo = String(total + 1).padStart(6, '0');
+    if (!configuredSeries) {
+      throw new BadRequestException(
+        `El almacén "${warehouse.name}" no tiene una serie configurada para la numeración de documentos.`,
+      );
+    }
 
-    return `REQ-${new Date().getFullYear()}-${correlativo}`;
+    const series = configuredSeries.padStart(3, '0');
+
+    if (!/^\d{3}$/.test(series)) {
+      throw new BadRequestException(
+        `La serie "${configuredSeries}" del almacén "${warehouse.name}" no es válida.`,
+      );
+    }
+
+    const prefix = `REQ-${series}-`;
+
+    const lastRequest = await manager
+      .getRepository(Request)
+      .createQueryBuilder('request')
+      .where('request.requestNumber LIKE :prefix', {
+        prefix: `${prefix}%`,
+      })
+      .orderBy('request.id', 'DESC')
+      .getOne();
+
+    let nextNumber = 1;
+
+    if (lastRequest?.requestNumber) {
+      const parts = lastRequest.requestNumber.split('-');
+      const lastCorrelativo = Number(parts[2]);
+
+      if (Number.isFinite(lastCorrelativo)) {
+        nextNumber = lastCorrelativo + 1;
+      }
+    }
+
+    const correlativo = String(nextNumber).padStart(6, '0');
+
+    return `${prefix}${correlativo}`;
   }
 
   // ============================================================
@@ -341,7 +380,7 @@ export class RequestsService {
       // ======================================================
 
       const request = manager.create(Request, {
-        requestNumber: await this.generateRequestNumber(manager),
+        requestNumber: await this.generateRequestNumber(manager, warehouse),
 
         requester: dto.requester.trim(),
 

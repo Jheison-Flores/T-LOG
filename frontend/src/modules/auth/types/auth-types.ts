@@ -25,6 +25,8 @@ export interface AuthUser {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string | null;
+  position?: string | null;
   role: AuthRole;
   warehouse?: AuthWarehouse | null;
 }
