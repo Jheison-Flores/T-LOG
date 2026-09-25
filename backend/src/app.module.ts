@@ -43,7 +43,7 @@ const databaseUrl = process.env.DATABASE_URL;
 @Module({
   imports: [
     // ==========================================================
-    // VARIABLES DE ENTORNO
+    // VARIABLES DE ENTORNO de desarrollo y producción
     // ==========================================================
 
     ConfigModule.forRoot({

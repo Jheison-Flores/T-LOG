@@ -1,0 +1,10 @@
+export enum AttendanceStatus {
+  PRESENT = 'PRESENT',
+  ABSENT = 'ABSENT',
+  REST = 'REST',
+  VACATION = 'VACATION',
+  MEDICAL_LEAVE = 'MEDICAL_LEAVE',
+  PERMISSION = 'PERMISSION',
+  HOLIDAY = 'HOLIDAY',
+  OTHER = 'OTHER',
+}
