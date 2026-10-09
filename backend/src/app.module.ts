@@ -75,6 +75,10 @@ const databaseUrl = process.env.DATABASE_URL;
 
             synchronize: !isProduction,
 
+            migrations: [__dirname + '/database/migrations/*{.js,.ts}'],
+
+            migrationsRun: isProduction,
+
             ssl: isProduction
               ? {
                   rejectUnauthorized: false,
@@ -96,7 +100,11 @@ const databaseUrl = process.env.DATABASE_URL;
 
             autoLoadEntities: true,
 
-            synchronize: true,
+            synchronize: !isProduction,
+
+            migrations: [__dirname + '/database/migrations/*{.js,.ts}'],
+
+            migrationsRun: isProduction,
           },
     ),
 
