@@ -129,6 +129,31 @@ export class StockMovement {
   })
   reference?: string;
 
+  // Datos del vale de entrada o salida, repetidos en cada línea del lote.
+  @Column({ name: 'voucher_series', type: 'varchar', length: 10, nullable: true })
+  voucherSeries?: string | null;
+
+  @Column({ name: 'voucher_prefix', type: 'varchar', length: 1, nullable: true })
+  voucherPrefix?: 'E' | 'S' | null;
+
+  @Column({ name: 'voucher_number', type: 'integer', nullable: true })
+  voucherNumber?: number | null;
+
+  @Column({ name: 'voucher_date', type: 'date', nullable: true })
+  voucherDate?: string | null;
+
+  @Column({ name: 'voucher_personnel', type: 'varchar', length: 200, nullable: true })
+  voucherPersonnel?: string | null;
+
+  @Column({ name: 'delivered_by', type: 'varchar', length: 200, nullable: true })
+  deliveredBy?: string | null;
+
+  @Column({ name: 'received_by', type: 'varchar', length: 200, nullable: true })
+  receivedBy?: string | null;
+
+  @Column({ name: 'voucher_comments', type: 'text', nullable: true })
+  voucherComments?: string | null;
+
   // ============================================================
   // USUARIO
   // ============================================================

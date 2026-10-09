@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { Eye, Plus } from "lucide-react";
+import { Download, Eye, LoaderCircle, Plus } from "lucide-react";
 import { StockMovementModal } from "../components/StockMovementModal";
 import { Button } from "@/components/ui";
 import { Card } from "@/components/ui/Card";
 
 import {
+  useDownloadStockMovementPdf,
   useStockMovements,
 } from "../hooks/useStockMovements";
 
@@ -76,6 +77,7 @@ export function StockMovementsPage() {
     isLoading,
     isError,
   } = useStockMovements();
+  const downloadMovementPdf = useDownloadStockMovementPdf();
 
   const [search, setSearch] =
     useState("");
@@ -87,6 +89,22 @@ export function StockMovementsPage() {
     selectedMovement,
     setSelectedMovement,
   ] = useState<StockMovement | null>(null);
+
+  const [downloadingPdfId, setDownloadingPdfId] = useState<number | null>(null);
+  const [downloadError, setDownloadError] = useState("");
+
+  const handleDownloadPdf = async (movement: StockMovement) => {
+    setDownloadingPdfId(movement.id);
+    setDownloadError("");
+    try {
+      await downloadMovementPdf.mutateAsync(movement);
+    } catch (error) {
+      console.error("Error descargando PDF del movimiento:", error);
+      setDownloadError("No se pudo descargar el PDF del movimiento.");
+    } finally {
+      setDownloadingPdfId(null);
+    }
+  };
 
   const filteredMovements =
     useMemo(() => {
@@ -130,6 +148,10 @@ export function StockMovementsPage() {
               movement.movementType
             ];
 
+          const voucher = movement.voucherSeries && movement.voucherNumber
+            ? `${movement.voucherPrefix || ""}-${movement.voucherSeries}-${String(movement.voucherNumber).padStart(6, "0")}`
+            : "";
+
           return (
             product
               .toLowerCase()
@@ -143,6 +165,7 @@ export function StockMovementsPage() {
             user
               .toLowerCase()
               .includes(term) ||
+            voucher.toLowerCase().includes(term) ||
             type
               .toLowerCase()
               .includes(term) ||
@@ -327,6 +350,12 @@ export function StockMovementsPage() {
           TABLA
       ====================================================== */}
 
+      {downloadError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {downloadError}
+        </div>
+      )}
+
       <Card>
 
         {filteredMovements.length === 0 ? (
@@ -397,6 +426,10 @@ export function StockMovementsPage() {
 
                   <th className="text-right px-5 py-4 font-semibold text-gray-600">
                     Acción
+                  </th>
+
+                  <th className="text-right px-5 py-4 font-semibold text-gray-600">
+                    PDF
                   </th>
 
                 </tr>
@@ -471,6 +504,12 @@ export function StockMovementsPage() {
                               ]
                             }
                           </span>
+
+                          {movement.voucherPrefix && movement.voucherNumber && (
+                            <p className="mt-1 font-mono text-xs text-gray-500">
+                              {movement.voucherPrefix}-{movement.voucherSeries}-{String(movement.voucherNumber).padStart(6, "0")}
+                            </p>
+                          )}
 
                         </td>
 
@@ -592,6 +631,25 @@ export function StockMovementsPage() {
 
                           </div>
 
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              title="Descargar PDF"
+                              aria-label="Descargar PDF del movimiento"
+                              onClick={() => void handleDownloadPdf(movement)}
+                              disabled={downloadingPdfId !== null}
+                              className="rounded-lg p-2 text-gray-500 transition hover:bg-orange-50 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {downloadingPdfId === movement.id ? (
+                                <LoaderCircle size={17} className="animate-spin" />
+                              ) : (
+                                <Download size={17} />
+                              )}
+                            </button>
+                          </div>
                         </td>
 
                       </tr>
@@ -827,6 +885,26 @@ export function StockMovementsPage() {
                     }
                   </p>
 
+                </div>
+              )}
+
+              {selectedMovement.voucherSeries && selectedMovement.voucherNumber && (
+                <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">
+                    Vale de {selectedMovement.movementType === "ENTRY" ? "entrada" : "salida"}
+                  </p>
+                  <p className="mt-1 font-mono text-lg font-bold text-gray-900">
+                    {selectedMovement.voucherPrefix}-{selectedMovement.voucherSeries}-{String(selectedMovement.voucherNumber).padStart(6, "0")}
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                    <div><span className="block text-xs text-gray-500">Personal</span>{selectedMovement.voucherPersonnel || "—"}</div>
+                    <div><span className="block text-xs text-gray-500">Fecha del vale</span>{selectedMovement.voucherDate ? new Date(`${selectedMovement.voucherDate}T12:00:00`).toLocaleDateString("es-PE") : "—"}</div>
+                    <div><span className="block text-xs text-gray-500">Entregó</span>{selectedMovement.deliveredBy || "—"}</div>
+                    <div><span className="block text-xs text-gray-500">Recibió</span>{selectedMovement.receivedBy || "—"}</div>
+                  </div>
+                  {selectedMovement.voucherComments && (
+                    <p className="mt-3 border-t border-orange-200 pt-3 text-sm text-gray-700">{selectedMovement.voucherComments}</p>
+                  )}
                 </div>
               )}
 

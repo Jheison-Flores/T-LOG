@@ -5,6 +5,7 @@ import { stockMovementService } from "../services/stock-movement.service";
 import type {
   CreateBatchStockMovementDto,
   CreateStockMovementDto,
+  StockMovement,
 } from "../types/stock-movement.types";
 
 // ============================================================
@@ -82,5 +83,12 @@ export function useCreateBatchStockMovement() {
     onSuccess: () => {
       invalidateStockData(queryClient);
     },
+  });
+}
+
+export function useDownloadStockMovementPdf() {
+  return useMutation({
+    mutationFn: (movement: StockMovement) =>
+      stockMovementService.downloadPdf(movement),
   });
 }

@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { StockMovementsController } from './controllers/stock-movements.controller';
 import { StockMovementsService } from './services/stock.movements.service';
+import { StockMovementExportService } from './services/stock-movement-export.service';
 import { StockMovement } from './entities/stock-movement.entity';
 
 import { Product } from '../products/entities/product.entity';
@@ -17,7 +18,7 @@ import { InventoryModule } from '../inventory/inventory.module';
     InventoryModule, // Para que reconozca el InventoryService
   ],
   controllers: [StockMovementsController],
-  providers: [StockMovementsService],
+  providers: [StockMovementsService, StockMovementExportService],
   exports: [StockMovementsService],
 })
 export class StockMovementsModule {}

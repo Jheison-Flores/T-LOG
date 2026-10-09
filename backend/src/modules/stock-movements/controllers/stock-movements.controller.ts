@@ -7,11 +7,14 @@ import {
   ParseIntPipe,
   UseGuards,
   Req,
+  Res,
 } from '@nestjs/common';
 
 import { Request as ExpressRequest } from 'express';
+import type { Response } from 'express';
 
 import { StockMovementsService } from '../services/stock.movements.service';
+import { StockMovementExportService } from '../services/stock-movement-export.service';
 
 import { CreateStockMovementDto } from '../dto/create-stock-movement.dto';
 
@@ -34,7 +37,10 @@ interface RequestWithUser extends ExpressRequest {
 @Controller('stock-movements')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class StockMovementsController {
-  constructor(private readonly stockMovementsService: StockMovementsService) {}
+  constructor(
+    private readonly stockMovementsService: StockMovementsService,
+    private readonly stockMovementExportService: StockMovementExportService,
+  ) {}
 
   // ============================================================
   // CREAR MOVIMIENTO INDIVIDUAL
@@ -101,5 +107,23 @@ export class StockMovementsController {
     id: number,
   ) {
     return this.stockMovementsService.findOne(id, req.user.id);
+  }
+
+  @Get(':id/export/pdf')
+  @Roles('ADMIN', 'LOGISTICS')
+  async exportPdf(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Res() response: Response,
+  ): Promise<void> {
+    const movement = await this.stockMovementsService.findOne(id, req.user.id);
+    const buffer = await this.stockMovementExportService.generatePdf(id, req.user.id);
+
+    response.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${this.stockMovementExportService.getDownloadFilename(movement)}"`,
+      'Content-Length': buffer.length,
+    });
+    response.end(buffer);
   }
 }

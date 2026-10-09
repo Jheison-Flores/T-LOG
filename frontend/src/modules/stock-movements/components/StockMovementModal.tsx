@@ -59,6 +59,13 @@ interface MovementLine {
   currency?: "PEN" | "USD";
 }
 
+function localDateValue() {
+  const date = new Date();
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
 let lineSequence =
   1;
 
@@ -171,6 +178,13 @@ export function StockMovementModal({
   ] =
     useState("");
 
+  const [withVoucher, setWithVoucher] = useState(false);
+  const [voucherDate, setVoucherDate] = useState(localDateValue());
+  const [voucherPersonnel, setVoucherPersonnel] = useState("");
+  const [deliveredBy, setDeliveredBy] = useState("");
+  const [receivedBy, setReceivedBy] = useState("");
+  const [voucherComments, setVoucherComments] = useState("");
+
   const [
     lines,
     setLines,
@@ -235,6 +249,13 @@ export function StockMovementModal({
       setReference(
         "",
       );
+
+      setWithVoucher(false);
+      setVoucherDate(localDateValue());
+      setVoucherPersonnel("");
+      setDeliveredBy("");
+      setReceivedBy("");
+      setVoucherComments("");
 
       setLines([
         {
@@ -673,6 +694,21 @@ export function StockMovementModal({
         }
       }
 
+      if (withVoucher && (!deliveredBy.trim() || !receivedBy.trim())) {
+        return "Indica quién entrega y quién recibe para generar el vale.";
+      }
+
+      if (
+        withVoucher &&
+        lines.some((line) => !products.find((product) => product.id === line.productId)?.sku?.trim())
+      ) {
+        return "Todos los productos del vale deben tener un SKU registrado.";
+      }
+
+      if (withVoucher && !voucherDate) {
+        return "Selecciona la fecha del vale.";
+      }
+
       if (
         movementType ===
         "TRANSFER"
@@ -825,6 +861,12 @@ export function StockMovementModal({
           reference:
             reference.trim() ||
             undefined,
+
+          voucherDate: withVoucher ? voucherDate : undefined,
+          voucherPersonnel: withVoucher ? voucherPersonnel.trim() || undefined : undefined,
+          deliveredBy: withVoucher ? deliveredBy.trim() : undefined,
+          receivedBy: withVoucher ? receivedBy.trim() : undefined,
+          voucherComments: withVoucher ? voucherComments.trim() || undefined : undefined,
         };
 
       try {
@@ -1165,6 +1207,53 @@ export function StockMovementModal({
               </select>
             </div>
           </div>
+        )}
+
+        {(movementType === "ENTRY" || movementType === "OUTPUT") && (
+          <section className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={withVoucher}
+                onChange={(event) => setWithVoucher(event.target.checked)}
+                disabled={loading}
+                className="mt-1 h-4 w-4 accent-orange-600"
+              />
+              <span>
+                <span className="block font-semibold text-gray-800">
+                  Generar vale de {movementType === "ENTRY" ? "entrada" : "salida"}
+                </span>
+                <span className="mt-1 block text-xs text-gray-600">
+                  Se numerará con la serie de la mina y quedará disponible para descargar como PDF desde el historial.
+                </span>
+              </span>
+            </label>
+
+            {withVoucher && (
+              <div className="mt-4 grid grid-cols-1 gap-4 border-t border-orange-200 pt-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Fecha del vale *</label>
+                  <Input type="date" value={voucherDate} onChange={(event) => setVoucherDate(event.target.value)} disabled={loading} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Personal involucrado</label>
+                  <Input value={voucherPersonnel} onChange={(event) => setVoucherPersonnel(event.target.value)} placeholder="Nombres del personal" disabled={loading} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Quién entregó *</label>
+                  <Input value={deliveredBy} onChange={(event) => setDeliveredBy(event.target.value)} placeholder="Nombre de quien entrega" disabled={loading} maxLength={200} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Quién recibió *</label>
+                  <Input value={receivedBy} onChange={(event) => setReceivedBy(event.target.value)} placeholder="Nombre de quien recibe" disabled={loading} maxLength={200} />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Comentarios adicionales</label>
+                  <textarea value={voucherComments} onChange={(event) => setVoucherComments(event.target.value)} rows={2} placeholder="Observaciones del vale" disabled={loading} className="w-full rounded-lg border border-gray-300 bg-white p-3 outline-none focus:ring-2 focus:ring-orange-500" />
+                </div>
+              </div>
+            )}
+          </section>
         )}
 
         {/* =====================================================

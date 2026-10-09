@@ -103,4 +103,38 @@ export class CreateStockMovementDto {
   @IsOptional()
   @IsString()
   reference?: string;
+
+  @IsOptional()
+  @IsString()
+  voucherSeries?: string;
+
+  @IsOptional()
+  @IsIn(['E', 'S'])
+  voucherPrefix?: 'E' | 'S';
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  voucherNumber?: number;
+
+  @IsOptional()
+  @IsString()
+  voucherDate?: string;
+
+  @IsOptional()
+  @IsString()
+  voucherPersonnel?: string;
+
+  @IsOptional()
+  @IsString()
+  deliveredBy?: string;
+
+  @IsOptional()
+  @IsString()
+  receivedBy?: string;
+
+  @IsOptional()
+  @IsString()
+  voucherComments?: string;
 }

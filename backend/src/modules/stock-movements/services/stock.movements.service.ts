@@ -201,6 +201,87 @@ export class StockMovementsService {
     return this.dataSource.transaction(async (manager: EntityManager) => {
       const movements: StockMovement[] = [];
 
+      const hasVoucher = Boolean(dto.voucherDate);
+      let voucher:
+        | Pick<
+            CreateStockMovementDto,
+            | 'voucherSeries'
+            | 'voucherPrefix'
+            | 'voucherNumber'
+            | 'voucherDate'
+            | 'voucherPersonnel'
+            | 'deliveredBy'
+            | 'receivedBy'
+            | 'voucherComments'
+          >
+        | undefined;
+
+      if (hasVoucher) {
+        if (
+          dto.movementType !== MovementType.ENTRY &&
+          dto.movementType !== MovementType.OUTPUT
+        ) {
+          throw new BadRequestException(
+            'Los vales solo están disponibles para entradas y salidas.',
+          );
+        }
+
+        if (!dto.warehouseId) {
+          throw new BadRequestException(
+            'Selecciona el almacén para generar el vale.',
+          );
+        }
+
+        if (!dto.deliveredBy?.trim() || !dto.receivedBy?.trim()) {
+          throw new BadRequestException(
+            'Indica quién entrega y quién recibe para generar el vale.',
+          );
+        }
+
+        if (!dto.voucherDate || !/^\d{4}-\d{2}-\d{2}$/.test(dto.voucherDate)) {
+          throw new BadRequestException('La fecha del vale no es válida.');
+        }
+
+        // Lock the warehouse row so two simultaneous vouchers from the same
+        // mine cannot receive the same number.
+        const warehouse = await manager.findOne(Warehouse, {
+          where: { id: dto.warehouseId },
+          lock: { mode: 'pessimistic_write' },
+        });
+
+        if (!warehouse) {
+          throw new NotFoundException('Almacén no encontrado.');
+        }
+
+        const configuredSeries = warehouse.guideSeries?.trim();
+        if (!configuredSeries || !/^\d{1,3}$/.test(configuredSeries)) {
+          throw new BadRequestException(
+            `El almacén "${warehouse.name}" no tiene un código inicial válido configurado para los vales.`,
+          );
+        }
+
+        const series = configuredSeries.padStart(3, '0');
+        const prefix = dto.movementType === MovementType.ENTRY ? 'E' : 'S';
+        const latest = await manager
+          .getRepository(StockMovement)
+          .createQueryBuilder('movement')
+          .select('MAX(movement.voucherNumber)', 'max')
+          .where('movement.voucherSeries = :series', { series })
+          .andWhere('movement.voucherPrefix = :prefix', { prefix })
+          .getRawOne<{ max: string | null }>();
+
+        voucher = {
+          voucherSeries: series,
+          voucherPrefix: prefix,
+          voucherNumber: Number(latest?.max ?? 0) + 1,
+          voucherDate: dto.voucherDate,
+          voucherPersonnel: dto.voucherPersonnel?.trim() || undefined,
+          deliveredBy: dto.deliveredBy.trim(),
+          receivedBy: dto.receivedBy.trim(),
+          voucherComments: dto.voucherComments?.trim() || undefined,
+        };
+      }
+
       for (const detail of dto.details) {
         const movementDto: CreateStockMovementDto = {
           movementType: dto.movementType,
@@ -222,6 +303,8 @@ export class StockMovementsService {
           reason: dto.reason?.trim() || undefined,
 
           reference: dto.reference?.trim() || undefined,
+
+          ...voucher,
         };
 
         const movement = await this.processMovementWithManager(
@@ -696,6 +779,22 @@ export class StockMovementsService {
 
       reference: dto.reference,
 
+      voucherSeries: dto.voucherSeries,
+
+      voucherPrefix: dto.voucherPrefix,
+
+      voucherNumber: dto.voucherNumber,
+
+      voucherDate: dto.voucherDate,
+
+      voucherPersonnel: dto.voucherPersonnel,
+
+      deliveredBy: dto.deliveredBy,
+
+      receivedBy: dto.receivedBy,
+
+      voucherComments: dto.voucherComments,
+
       destinationInventory: inventory,
 
       user: {
@@ -777,6 +876,22 @@ export class StockMovementsService {
       reason: dto.reason,
 
       reference: dto.reference,
+
+      voucherSeries: dto.voucherSeries,
+
+      voucherPrefix: dto.voucherPrefix,
+
+      voucherNumber: dto.voucherNumber,
+
+      voucherDate: dto.voucherDate,
+
+      voucherPersonnel: dto.voucherPersonnel,
+
+      deliveredBy: dto.deliveredBy,
+
+      receivedBy: dto.receivedBy,
+
+      voucherComments: dto.voucherComments,
 
       sourceInventory: inventory,
 

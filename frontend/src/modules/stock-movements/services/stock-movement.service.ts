@@ -69,6 +69,25 @@ class StockMovementService {
 
     return response.data;
   }
+
+  async downloadPdf(movement: StockMovement): Promise<void> {
+    const response = await api.get(
+      `/stock-movements/${movement.id}/export/pdf`,
+      { responseType: "blob" },
+    );
+
+    const code = movement.voucherPrefix
+      ? `${movement.voucherPrefix}${movement.voucherSeries ? `-${movement.voucherSeries}` : ""}-${String(movement.voucherNumber ?? "").padStart(6, "0")}`
+      : `MOV-${movement.id}`;
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${code}.pdf`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.URL.revokeObjectURL(url);
+  }
 }
 
 export const stockMovementService =
