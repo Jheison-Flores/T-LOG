@@ -88,6 +88,29 @@ class StockMovementService {
     anchor.remove();
     window.URL.revokeObjectURL(url);
   }
+
+  async downloadVouchers(
+    fromDate: string,
+    toDate: string,
+    warehouseId: number | undefined,
+    movementType: string | undefined,
+  ): Promise<void> {
+    const params = new URLSearchParams({ from: fromDate, to: toDate });
+    if (warehouseId) params.set("warehouseId", String(warehouseId));
+    if (movementType) params.set("movementType", movementType);
+    const response = await api.get(
+      `/stock-movements/export/vouchers?${params.toString()}`,
+      { responseType: "blob" },
+    );
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `VALES-${fromDate}-a-${toDate}${warehouseId ? `-ALMACEN-${warehouseId}` : ""}${movementType ? `-${movementType}` : ""}.pdf`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.URL.revokeObjectURL(url);
+  }
 }
 
 export const stockMovementService =

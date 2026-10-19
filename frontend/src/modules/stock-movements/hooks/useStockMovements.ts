@@ -92,3 +92,19 @@ export function useDownloadStockMovementPdf() {
       stockMovementService.downloadPdf(movement),
   });
 }
+
+export function useDownloadStockMovementVouchers() {
+  return useMutation({
+    mutationFn: (params: {
+      fromDate: string;
+      toDate: string;
+      warehouseId?: number;
+      movementType?: string;
+    }) => stockMovementService.downloadVouchers(
+      params.fromDate,
+      params.toDate,
+      params.warehouseId,
+      params.movementType,
+    ),
+  });
+}

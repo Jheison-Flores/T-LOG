@@ -976,13 +976,8 @@ export class PurchasesService {
       throw new BadRequestException('La Orden de Compra ya fue recepcionada.');
     }
 
-    // ==========================================================
-    // IMPORTANTE:
-    // explícitamente number | undefined.
-    //
-    // Corrige TS2322.
-    // ==========================================================
-
+    // La unidad de la O.C. representa la unidad solicitante; el
+    // destino físico de recepción debe venir explícitamente en el DTO.
     let warehouseId: number | undefined = dto.warehouseId;
 
     // ==========================================================
@@ -999,16 +994,6 @@ export class PurchasesService {
       }
 
       warehouseId = user.warehouse.id;
-    }
-
-    // ==========================================================
-    // ADMIN
-    //
-    // Si no seleccionó almacén, usamos el warehouse de la O.C.
-    // ==========================================================
-
-    if (this.isAdmin(user) && !warehouseId) {
-      warehouseId = purchase.warehouse?.id;
     }
 
     if (!warehouseId) {

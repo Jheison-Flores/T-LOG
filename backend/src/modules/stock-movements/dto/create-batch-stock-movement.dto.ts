@@ -133,11 +133,19 @@ export class CreateBatchStockMovementDto {
 
   @IsOptional()
   @IsString()
+  voucherShift?: string;
+
+  @IsOptional()
+  @IsString()
   deliveredBy?: string;
 
   @IsOptional()
   @IsString()
   receivedBy?: string;
+
+  @IsOptional()
+  @IsString()
+  areaManager?: string;
 
   @IsOptional()
   @IsString()

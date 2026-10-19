@@ -80,10 +80,6 @@ export function ReceivePurchaseModal({
   const roleCode =
     currentUser?.role?.code;
 
-  const isAdmin =
-    roleCode ===
-    "ADMIN";
-
   const isLogistics =
     roleCode ===
     "LOGISTICS";
@@ -132,41 +128,18 @@ export function ReceivePurchaseModal({
         return;
       }
 
-      // ==========================================================
-      // ADMIN
-      //
-      // Como primera opción usamos el warehouse de la O.C.
-      // Si por datos históricos no existe, aplicamos los fallbacks
-      // que ya tenía el componente.
-      // ==========================================================
-
-      if (
-        isAdmin &&
-        purchase?.warehouse?.id
-      ) {
-        setWarehouseId(
-          String(
-            purchase.warehouse.id,
-          ),
-        );
-
-        return;
-      }
-
-      if (
-        activeWarehouses.length ===
-        1
-      ) {
-        setWarehouseId(
-          String(
-            activeWarehouses[0].id,
-          ),
-        );
-
-        return;
-      }
+      // La unidad de la O.C. representa la mina solicitante y no
+      // define el destino físico. Lima se sugiere si está disponible,
+      // pero el administrador puede seleccionar otro almacén.
 
       const lima =
+        activeWarehouses.find(
+          (
+            warehouse,
+          ) =>
+            warehouse.type?.toUpperCase() === "MAIN" ||
+            warehouse.type?.toUpperCase() === "CENTRAL",
+        ) ??
         activeWarehouses.find(
           (
             warehouse,
@@ -191,10 +164,8 @@ export function ReceivePurchaseModal({
     },
     [
       open,
-      purchase,
       activeWarehouses,
       currentUser,
-      isAdmin,
       isLogistics,
     ],
   );
@@ -366,7 +337,7 @@ export function ReceivePurchaseModal({
                   text-gray-500
                 "
               >
-                La recepción se registrará automáticamente en tu unidad.
+                La recepción se registrará automáticamente en tu almacén asignado.
               </p>
             </div>
           ) : (
@@ -432,6 +403,11 @@ export function ReceivePurchaseModal({
                 ),
               )}
             </select>
+          )}
+          {!isLogistics && (
+            <p className="mt-2 text-xs text-gray-500">
+              La unidad indicada en la orden puede ser la mina solicitante. El inventario ingresará al almacén seleccionado aquí; después podrás trasladarlo con una guía de remisión.
+            </p>
           )}
         </div>
 

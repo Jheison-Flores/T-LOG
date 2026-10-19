@@ -56,6 +56,22 @@ const emptyManualLine = (): GuideLine => ({
   freeText: false,
 });
 
+function getWarehouseArrivalPoint(warehouse: Warehouse): string {
+  const normalizedName = warehouse.name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+
+  if (normalizedName.includes("KOLPA")) return "HUANCAVELICA - U.M. KOLPA";
+  if (normalizedName.includes("PODEROSA")) return "TRUJILLO - PODEROSA";
+  if (normalizedName.includes("OREX")) return "SAN JUAN DE CHORUNGA - AREQUIPA - U.M. OREX";
+
+  const destination = warehouse.type === "MINE"
+    ? `U.M. ${normalizedName.replace(/^ALMACEN(?:\s+CENTRAL)?\s*/, "").trim()}`
+    : normalizedName;
+  return [warehouse.city?.trim().toUpperCase(), destination].filter(Boolean).join(" - ") || warehouse.name;
+}
+
 export function RemissionGuideModal({
   open,
   requests,
@@ -429,12 +445,22 @@ export function RemissionGuideModal({
                 <option value="">Selecciona destino</option>
                 {activeWarehouses.map((warehouse) => (
                   <option key={warehouse.id} value={warehouse.id}>
-                    {warehouse.name} {warehouse.code ? `(${warehouse.code})` : ""}
+                    {getWarehouseArrivalPoint(warehouse)} {warehouse.code ? `(${warehouse.code})` : ""}
                   </option>
                 ))}
               </select>
             </div>
           )}
+
+          {guideType === "MANUAL_WAREHOUSE" && destinationWarehouseId && (() => {
+            const destination = activeWarehouses.find((warehouse) => warehouse.id === Number(destinationWarehouseId));
+            return destination ? (
+              <div className="lg:col-span-3 rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+                <p className="text-xs font-semibold uppercase text-gray-400">Punto de llegada</p>
+                <p className="mt-1 font-semibold text-gray-800">{getWarehouseArrivalPoint(destination)}</p>
+              </div>
+            ) : null;
+          })()}
 
           {guideType === "EXTERNAL_SERVICE" && (
             <div className="lg:col-span-3 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -471,8 +497,7 @@ export function RemissionGuideModal({
             </div>
             <div>
               <p className="text-xs font-semibold uppercase text-gray-400">Destino</p>
-              <p className="mt-1 font-semibold text-gray-800">{selectedRequest.warehouse.name}</p>
-              <p className="mt-1 text-xs text-gray-500">{selectedRequest.warehouse.address ?? selectedRequest.warehouse.city ?? ""}</p>
+              <p className="mt-1 font-semibold text-gray-800">{getWarehouseArrivalPoint(selectedRequest.warehouse)}</p>
             </div>
           </div>
         )}

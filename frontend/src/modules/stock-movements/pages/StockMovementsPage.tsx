@@ -3,8 +3,10 @@ import { Download, Eye, LoaderCircle, Plus } from "lucide-react";
 import { StockMovementModal } from "../components/StockMovementModal";
 import { Button } from "@/components/ui";
 import { Card } from "@/components/ui/Card";
+import { useWarehouses } from "@/modules/warehouses/hooks/useWarehouses";
 
 import {
+  useDownloadStockMovementVouchers,
   useDownloadStockMovementPdf,
   useStockMovements,
 } from "../hooks/useStockMovements";
@@ -45,6 +47,11 @@ const movementStyles: Record<
     "bg-orange-100 text-orange-700",
 };
 
+function toDateInputValue(date: Date): string {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 10);
+}
+
 function formatMoney(
   value: number | string | null | undefined,
   currency: "PEN" | "USD" | null | undefined,
@@ -78,6 +85,11 @@ export function StockMovementsPage() {
     isError,
   } = useStockMovements();
   const downloadMovementPdf = useDownloadStockMovementPdf();
+  const downloadVoucherRange = useDownloadStockMovementVouchers();
+  const { data: warehouses = [] } = useWarehouses();
+  const movementWarehouses = warehouses.filter((warehouse) =>
+    warehouse.isActive && (warehouse.type === "MINE" || warehouse.type === "MAIN" || warehouse.type === "CENTRAL"),
+  );
 
   const [search, setSearch] =
     useState("");
@@ -91,6 +103,15 @@ export function StockMovementsPage() {
   ] = useState<StockMovement | null>(null);
 
   const [downloadingPdfId, setDownloadingPdfId] = useState<number | null>(null);
+  const [voucherFromDate, setVoucherFromDate] = useState(() => {
+    const date = new Date();
+    date.setDate(1);
+    return toDateInputValue(date);
+  });
+  const [voucherToDate, setVoucherToDate] = useState(() => toDateInputValue(new Date()));
+  const [voucherMineId, setVoucherMineId] = useState("all");
+  const [voucherMovementType, setVoucherMovementType] = useState<MovementType | "all">("all");
+  const [downloadingRange, setDownloadingRange] = useState(false);
   const [downloadError, setDownloadError] = useState("");
 
   const handleDownloadPdf = async (movement: StockMovement) => {
@@ -106,17 +127,46 @@ export function StockMovementsPage() {
     }
   };
 
+  const handleDownloadRange = async () => {
+    if (!voucherFromDate || !voucherToDate || voucherFromDate > voucherToDate) return;
+    setDownloadingRange(true);
+    setDownloadError("");
+    try {
+      await downloadVoucherRange.mutateAsync({
+        fromDate: voucherFromDate,
+        toDate: voucherToDate,
+        warehouseId: voucherMineId === "all" ? undefined : Number(voucherMineId),
+        movementType: voucherMovementType === "all" ? undefined : voucherMovementType,
+      });
+    } catch (error) {
+      console.error("Error descargando vales del periodo:", error);
+      setDownloadError("No se pudieron descargar los vales con los filtros seleccionados.");
+    } finally {
+      setDownloadingRange(false);
+    }
+  };
+
   const filteredMovements =
     useMemo(() => {
       const term =
         search.trim().toLowerCase();
 
-      if (!term) {
-        return movements;
-      }
-
       return movements.filter(
         (movement) => {
+          const movementDate = movement.voucherDate?.slice(0, 10) ?? movement.createdAt.slice(0, 10);
+          const sourceWarehouseId = movement.sourceInventory?.warehouse?.id;
+          const destinationWarehouseId = movement.destinationInventory?.warehouse?.id;
+
+          if (voucherFromDate && movementDate < voucherFromDate) return false;
+          if (voucherToDate && movementDate > voucherToDate) return false;
+          if (voucherMovementType !== "all" && movement.movementType !== voucherMovementType) return false;
+          if (
+            voucherMineId !== "all" &&
+            sourceWarehouseId !== Number(voucherMineId) &&
+            destinationWarehouseId !== Number(voucherMineId)
+          ) return false;
+          if (!term) return true;
+
           const product =
             movement.sourceInventory
               ?.product?.name ??
@@ -175,7 +225,7 @@ export function StockMovementsPage() {
           );
         },
       );
-    }, [movements, search]);
+    }, [movements, search, voucherFromDate, voucherToDate, voucherMineId, voucherMovementType]);
 
   // ============================================================
   // LOADING
@@ -272,8 +322,8 @@ export function StockMovementsPage() {
 
       <Card>
 
-        <div className="p-5">
-
+        <div className="space-y-4 p-5">
+          <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Buscar movimiento
           </label>
@@ -287,6 +337,60 @@ export function StockMovementsPage() {
             placeholder="Producto, almacén, usuario, tipo o ID..."
             className="w-full border border-gray-300 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500"
           />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Mina / almacén</label>
+              <select
+                value={voucherMineId}
+                onChange={(event) => setVoucherMineId(event.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="all">Todas las minas y almacenes</option>
+                {movementWarehouses.map((warehouse) => (
+                  <option key={warehouse.id} value={warehouse.id}>
+                    {warehouse.type === "MAIN" || warehouse.type === "CENTRAL" ? "Almacén central de Lima" : warehouse.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Tipo de movimiento</label>
+              <select
+                value={voucherMovementType}
+                onChange={(event) => setVoucherMovementType(event.target.value as MovementType | "all")}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="all">Todos los tipos</option>
+                <option value="ENTRY">Entrada</option>
+                <option value="OUTPUT">Salida</option>
+                <option value="TRANSFER">Transferencia</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Desde</label>
+              <input type="date" value={voucherFromDate} onChange={(event) => setVoucherFromDate(event.target.value)} className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500" />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Hasta</label>
+              <input type="date" value={voucherToDate} onChange={(event) => setVoucherToDate(event.target.value)} className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500" />
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={() => void handleDownloadRange()}
+              disabled={!voucherFromDate || !voucherToDate || voucherFromDate > voucherToDate || downloadingRange}
+            >
+              {downloadingRange ? <LoaderCircle size={17} className="animate-spin" /> : <Download size={17} />}
+              Descargar PDF
+            </Button>
+          </div>
+          {voucherFromDate && voucherToDate && voucherFromDate > voucherToDate && (
+            <p className="text-sm text-red-600">La fecha inicial debe ser anterior o igual a la fecha final.</p>
+          )}
 
         </div>
 
@@ -901,6 +1005,7 @@ export function StockMovementsPage() {
                     <div><span className="block text-xs text-gray-500">Fecha del vale</span>{selectedMovement.voucherDate ? new Date(`${selectedMovement.voucherDate}T12:00:00`).toLocaleDateString("es-PE") : "—"}</div>
                     <div><span className="block text-xs text-gray-500">Entregó</span>{selectedMovement.deliveredBy || "—"}</div>
                     <div><span className="block text-xs text-gray-500">Recibió</span>{selectedMovement.receivedBy || "—"}</div>
+                    <div><span className="block text-xs text-gray-500">Jefe / encargado de área</span>{selectedMovement.areaManager || "—"}</div>
                   </div>
                   {selectedMovement.voucherComments && (
                     <p className="mt-3 border-t border-orange-200 pt-3 text-sm text-gray-700">{selectedMovement.voucherComments}</p>

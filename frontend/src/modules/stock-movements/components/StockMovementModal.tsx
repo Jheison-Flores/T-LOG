@@ -42,6 +42,7 @@ import {
 import {
   ProductSearchSelect,
 } from "@/components/selectors/ProductSearchSelect";
+import { useAuth } from "@/modules/auth/contexts/AuthContexts";
 
 interface Props {
   open:
@@ -99,6 +100,9 @@ export function StockMovementModal({
   open,
   onClose,
 }: Props) {
+  const { user } = useAuth();
+  const sessionWarehouseId = user?.role.code === "ADMIN" ? undefined : user?.warehouse?.id;
+
   const createBatchMovement =
     useCreateBatchStockMovement();
 
@@ -181,8 +185,10 @@ export function StockMovementModal({
   const [withVoucher, setWithVoucher] = useState(false);
   const [voucherDate, setVoucherDate] = useState(localDateValue());
   const [voucherPersonnel, setVoucherPersonnel] = useState("");
+  const [voucherShift, setVoucherShift] = useState("");
   const [deliveredBy, setDeliveredBy] = useState("");
   const [receivedBy, setReceivedBy] = useState("");
+  const [areaManager, setAreaManager] = useState("");
   const [voucherComments, setVoucherComments] = useState("");
 
   const [
@@ -231,11 +237,11 @@ export function StockMovementModal({
       );
 
       setWarehouseId(
-        undefined,
+        sessionWarehouseId,
       );
 
       setSourceWarehouseId(
-        undefined,
+        sessionWarehouseId,
       );
 
       setDestinationWarehouseId(
@@ -282,6 +288,7 @@ export function StockMovementModal({
     },
     [
       open,
+      sessionWarehouseId,
     ],
   );
 
@@ -423,11 +430,11 @@ export function StockMovementModal({
       );
 
       setWarehouseId(
-        undefined,
+        sessionWarehouseId,
       );
 
       setSourceWarehouseId(
-        undefined,
+        sessionWarehouseId,
       );
 
       setDestinationWarehouseId(
@@ -694,7 +701,7 @@ export function StockMovementModal({
         }
       }
 
-      if (withVoucher && (!deliveredBy.trim() || !receivedBy.trim())) {
+      if (withVoucher && (!voucherPersonnel.trim() || !deliveredBy.trim() || !receivedBy.trim())) {
         return "Indica quién entrega y quién recibe para generar el vale.";
       }
 
@@ -864,8 +871,10 @@ export function StockMovementModal({
 
           voucherDate: withVoucher ? voucherDate : undefined,
           voucherPersonnel: withVoucher ? voucherPersonnel.trim() || undefined : undefined,
+          voucherShift: withVoucher ? voucherShift.trim() || undefined : undefined,
           deliveredBy: withVoucher ? deliveredBy.trim() : undefined,
           receivedBy: withVoucher ? receivedBy.trim() : undefined,
+          areaManager: withVoucher ? areaManager.trim() || undefined : undefined,
           voucherComments: withVoucher ? voucherComments.trim() || undefined : undefined,
         };
 
@@ -1003,7 +1012,11 @@ export function StockMovementModal({
               }
             </label>
 
-            <select
+            {sessionWarehouseId ? (
+              <div className="w-full rounded-lg border border-gray-300 bg-gray-100 p-3 text-gray-700">
+                {user?.warehouse?.name ?? activeWarehouses.find((warehouse) => warehouse.id === sessionWarehouseId)?.name ?? "Almacén de tu sesión"}
+              </div>
+            ) : <select
               value={
                 warehouseId ??
                 ""
@@ -1060,7 +1073,7 @@ export function StockMovementModal({
                   </option>
                 ),
               )}
-            </select>
+            </select>}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -1069,7 +1082,11 @@ export function StockMovementModal({
                 Almacén origen *
               </label>
 
-              <select
+              {sessionWarehouseId ? (
+                <div className="w-full rounded-lg border border-gray-300 bg-gray-100 p-3 text-gray-700">
+                  {user?.warehouse?.name ?? activeWarehouses.find((warehouse) => warehouse.id === sessionWarehouseId)?.name ?? "Almacén de tu sesión"}
+                </div>
+              ) : <select
                 value={
                   sourceWarehouseId ??
                   ""
@@ -1135,7 +1152,7 @@ export function StockMovementModal({
                     </option>
                   ),
                 )}
-              </select>
+              </select>}
             </div>
 
             <div>
@@ -1236,8 +1253,12 @@ export function StockMovementModal({
                   <Input type="date" value={voucherDate} onChange={(event) => setVoucherDate(event.target.value)} disabled={loading} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Personal involucrado</label>
-                  <Input value={voucherPersonnel} onChange={(event) => setVoucherPersonnel(event.target.value)} placeholder="Nombres del personal" disabled={loading} />
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Solicitante / destinatario *</label>
+                  <Input value={voucherPersonnel} onChange={(event) => setVoucherPersonnel(event.target.value)} placeholder="Nombre de quien recibe los materiales" disabled={loading} maxLength={200} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Guardia</label>
+                  <Input value={voucherShift} onChange={(event) => setVoucherShift(event.target.value)} placeholder="Día o noche" disabled={loading} maxLength={40} />
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Quién entregó *</label>
@@ -1246,6 +1267,10 @@ export function StockMovementModal({
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Quién recibió *</label>
                   <Input value={receivedBy} onChange={(event) => setReceivedBy(event.target.value)} placeholder="Nombre de quien recibe" disabled={loading} maxLength={200} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Jefe / encargado de área (opcional)</label>
+                  <Input value={areaManager} onChange={(event) => setAreaManager(event.target.value)} placeholder="Nombre del jefe de área" disabled={loading} maxLength={200} />
                 </div>
                 <div className="md:col-span-2">
                   <label className="mb-1 block text-sm font-medium text-gray-700">Comentarios adicionales</label>

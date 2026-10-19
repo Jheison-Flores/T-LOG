@@ -1346,6 +1346,9 @@ export function PurchaseModal({
                       : "Selecciona la unidad responsable de la O.C."
                 }
               </p>
+              <p className="mt-1 text-xs text-gray-500">
+                Esta unidad identifica a quién corresponde la compra. El almacén donde ingresará el inventario se elige al confirmar la recepción.
+              </p>
             </div>
 
             <div>

@@ -210,8 +210,10 @@ export class StockMovementsService {
             | 'voucherNumber'
             | 'voucherDate'
             | 'voucherPersonnel'
+            | 'voucherShift'
             | 'deliveredBy'
             | 'receivedBy'
+            | 'areaManager'
             | 'voucherComments'
           >
         | undefined;
@@ -232,9 +234,9 @@ export class StockMovementsService {
           );
         }
 
-        if (!dto.deliveredBy?.trim() || !dto.receivedBy?.trim()) {
+        if (!dto.voucherPersonnel?.trim() || !dto.deliveredBy?.trim() || !dto.receivedBy?.trim()) {
           throw new BadRequestException(
-            'Indica quién entrega y quién recibe para generar el vale.',
+            'Indica el destinatario, quién entrega y quién recibe para generar el vale.',
           );
         }
 
@@ -276,8 +278,10 @@ export class StockMovementsService {
           voucherNumber: Number(latest?.max ?? 0) + 1,
           voucherDate: dto.voucherDate,
           voucherPersonnel: dto.voucherPersonnel?.trim() || undefined,
+          voucherShift: dto.voucherShift?.trim() || undefined,
           deliveredBy: dto.deliveredBy.trim(),
           receivedBy: dto.receivedBy.trim(),
+          areaManager: dto.areaManager?.trim() || undefined,
           voucherComments: dto.voucherComments?.trim() || undefined,
         };
       }
@@ -789,9 +793,13 @@ export class StockMovementsService {
 
       voucherPersonnel: dto.voucherPersonnel,
 
+      voucherShift: dto.voucherShift,
+
       deliveredBy: dto.deliveredBy,
 
       receivedBy: dto.receivedBy,
+
+      areaManager: dto.areaManager,
 
       voucherComments: dto.voucherComments,
 
@@ -887,9 +895,13 @@ export class StockMovementsService {
 
       voucherPersonnel: dto.voucherPersonnel,
 
+      voucherShift: dto.voucherShift,
+
       deliveredBy: dto.deliveredBy,
 
       receivedBy: dto.receivedBy,
+
+      areaManager: dto.areaManager,
 
       voucherComments: dto.voucherComments,
 

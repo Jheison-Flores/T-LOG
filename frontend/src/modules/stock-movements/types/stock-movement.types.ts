@@ -52,8 +52,10 @@ export interface StockMovement {
   voucherNumber?: number | null;
   voucherDate?: string | null;
   voucherPersonnel?: string | null;
+  voucherShift?: string | null;
   deliveredBy?: string | null;
   receivedBy?: string | null;
+  areaManager?: string | null;
   voucherComments?: string | null;
   sourceInventory?: StockMovementInventory;
   destinationInventory?: StockMovementInventory;
@@ -74,8 +76,10 @@ export interface CreateStockMovementDto {
   reference?: string;
   voucherDate?: string;
   voucherPersonnel?: string;
+  voucherShift?: string;
   deliveredBy?: string;
   receivedBy?: string;
+  areaManager?: string;
   voucherComments?: string;
 }
 
@@ -96,7 +100,9 @@ export interface CreateBatchStockMovementDto {
   reference?: string;
   voucherDate?: string;
   voucherPersonnel?: string;
+  voucherShift?: string;
   deliveredBy?: string;
   receivedBy?: string;
+  areaManager?: string;
   voucherComments?: string;
 }

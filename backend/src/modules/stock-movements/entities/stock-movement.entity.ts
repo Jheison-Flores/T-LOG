@@ -145,11 +145,17 @@ export class StockMovement {
   @Column({ name: 'voucher_personnel', type: 'varchar', length: 200, nullable: true })
   voucherPersonnel?: string | null;
 
+  @Column({ name: 'voucher_shift', type: 'varchar', length: 40, nullable: true })
+  voucherShift?: string | null;
+
   @Column({ name: 'delivered_by', type: 'varchar', length: 200, nullable: true })
   deliveredBy?: string | null;
 
   @Column({ name: 'received_by', type: 'varchar', length: 200, nullable: true })
   receivedBy?: string | null;
+
+  @Column({ name: 'area_manager', type: 'varchar', length: 200, nullable: true })
+  areaManager?: string | null;
 
   @Column({ name: 'voucher_comments', type: 'text', nullable: true })
   voucherComments?: string | null;

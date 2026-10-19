@@ -238,6 +238,35 @@ export class RemissionGuidesService {
     return centralWarehouse;
   }
 
+  private getWarehouseArrivalPoint(warehouse: Warehouse): string {
+    const normalizedName = warehouse.name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase();
+
+    if (normalizedName.includes('KOLPA')) {
+      return 'HUANCAVELICA - U.M. KOLPA';
+    }
+    if (normalizedName.includes('PODEROSA')) {
+      return 'TRUJILLO - PODEROSA';
+    }
+    if (normalizedName.includes('OREX')) {
+      return 'SAN JUAN DE CHORUNGA - AREQUIPA - U.M. OREX';
+    }
+
+    const city = warehouse.city?.trim();
+    const mineName = normalizedName
+      .replace(/^ALMACEN(?:\s+CENTRAL)?\s*/, '')
+      .trim();
+    const destination = warehouse.type === 'MINE'
+      ? `U.M. ${mineName}`
+      : mineName;
+
+    return [city?.toUpperCase(), destination].filter(Boolean).join(' - ') ||
+      warehouse.address?.trim() ||
+      warehouse.name;
+  }
+
   // ============================================================
   // ORIGEN DE LA GUÍA
   //
@@ -813,19 +842,19 @@ export class RemissionGuidesService {
       const arrivalPoint =
         dto.guideType === RemissionGuideType.EXTERNAL_SERVICE
           ? dto.arrivalPoint!.trim()
-          : destinationWarehouse?.address || destinationWarehouse?.name || '';
+          : destinationWarehouse
+            ? this.getWarehouseArrivalPoint(destinationWarehouse)
+            : '';
 
       const recipientName =
-        dto.guideType === RemissionGuideType.REQUEST
-          ? request!.requester
-          : dto.guideType === RemissionGuideType.MANUAL_WAREHOUSE
-            ? destinationWarehouse!.name
-            : dto.recipientName!.trim();
+        dto.guideType === RemissionGuideType.EXTERNAL_SERVICE
+          ? dto.recipientName!.trim()
+          : 'TEINCOMIN SAC';
 
       const recipientRuc =
         dto.guideType === RemissionGuideType.EXTERNAL_SERVICE
           ? dto.recipientRuc?.trim() || null
-          : null;
+          : '20542412322';
 
       // ======================================================
       // CREAR GUÍA

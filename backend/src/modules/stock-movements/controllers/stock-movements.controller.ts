@@ -8,6 +8,7 @@ import {
   UseGuards,
   Req,
   Res,
+  Query,
 } from '@nestjs/common';
 
 import { Request as ExpressRequest } from 'express';
@@ -91,6 +92,42 @@ export class StockMovementsController {
     req: RequestWithUser,
   ) {
     return this.stockMovementsService.findAll(req.user.id);
+  }
+
+  @Get('export/vouchers')
+  @Roles('ADMIN', 'LOGISTICS')
+  async exportVouchers(
+    @Req() req: RequestWithUser,
+    @Query('from') fromDate: string,
+    @Query('to') toDate: string,
+    @Query('warehouseId') warehouseId: string | undefined,
+    @Query('movementType') movementType: string | undefined,
+    @Res() response: Response,
+  ): Promise<void> {
+    const buffer = await this.stockMovementExportService.generateRangePdf(fromDate, toDate, warehouseId, movementType, req.user.id);
+
+    response.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${this.stockMovementExportService.getRangeDownloadFilename(fromDate, toDate)}"`,
+      'Content-Length': buffer.length,
+    });
+    response.end(buffer);
+  }
+
+  @Get('export/vouchers/pdf')
+  @Roles('ADMIN', 'LOGISTICS')
+  async exportMonthlyVouchers(
+    @Req() req: RequestWithUser,
+    @Query('month') month: string,
+    @Res() response: Response,
+  ): Promise<void> {
+    const buffer = await this.stockMovementExportService.generateMonthlyPdf(month, req.user.id);
+    response.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${this.stockMovementExportService.getMonthlyDownloadFilename(month)}"`,
+      'Content-Length': buffer.length,
+    });
+    response.end(buffer);
   }
 
   // ============================================================

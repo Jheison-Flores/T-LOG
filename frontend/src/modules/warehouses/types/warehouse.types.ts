@@ -1,4 +1,5 @@
 export type WarehouseType =
+  | "MAIN"
   | "CENTRAL"
   | "MINE"
   | "WORKSHOP"

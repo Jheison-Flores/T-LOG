@@ -14,6 +14,7 @@ import {
 import {
   useWarehouses,
 } from "@/modules/warehouses/hooks/useWarehouses";
+import { useAuth } from "@/modules/auth/contexts/AuthContexts";
 
 import {
   InventoryStats,
@@ -28,6 +29,8 @@ import type {
 } from "../types/inventory.types";
 
 export function InventoryPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role.code === "ADMIN";
 
   const [search, setSearch] =
     useState("");
@@ -36,6 +39,10 @@ export function InventoryPage() {
     useState<number | undefined>(
       undefined,
     );
+
+  const selectedWarehouseId = isAdmin
+    ? warehouseId
+    : user?.warehouse?.id;
 
   const [stockStatus, setStockStatus] =
     useState<StockStatus>("ALL");
@@ -62,7 +69,7 @@ export function InventoryPage() {
     search:
       search.trim() || undefined,
 
-    warehouseId,
+    warehouseId: selectedWarehouseId,
 
     stockStatus,
 
@@ -211,7 +218,7 @@ export function InventoryPage() {
           {/* ALMACÉN */}
           {/* ================================================== */}
 
-          <select
+          {isAdmin ? <select
 
             value={
               warehouseId !== undefined
@@ -256,7 +263,11 @@ export function InventoryPage() {
                 ),
               )}
 
-          </select>
+          </select> : (
+            <div className="flex min-h-12 items-center rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 text-sm font-medium text-gray-700">
+              {user?.warehouse?.name ?? "Cargando almacén de la sesión..."}
+            </div>
+          )}
 
 
           {/* ================================================== */}
