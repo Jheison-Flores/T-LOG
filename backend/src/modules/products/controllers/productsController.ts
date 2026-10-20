@@ -77,12 +77,11 @@ export class ProductsController {
 
   // ============================================================
   // EDITAR PRODUCTO
-  //
-  // Se mantiene solamente para ADMIN.
+  // ADMIN y LOGISTICS pueden mantener actualizado el catálogo.
   // ============================================================
 
   @Patch(':id')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'LOGISTICS')
   update(
     @Param('id', ParseIntPipe)
     id: number,
@@ -98,7 +97,7 @@ export class ProductsController {
   // ============================================================
 
   @Patch(':id/activate')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'LOGISTICS')
   activate(
     @Param('id', ParseIntPipe)
     id: number,
@@ -111,7 +110,7 @@ export class ProductsController {
   // ============================================================
 
   @Patch(':id/deactivate')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'LOGISTICS')
   deactivate(
     @Param('id', ParseIntPipe)
     id: number,

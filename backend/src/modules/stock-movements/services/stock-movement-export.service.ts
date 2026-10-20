@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 import { StockMovement } from '../entities/stock-movement.entity';
@@ -48,8 +49,19 @@ export class StockMovementExportService {
     return this.renderVouchers(vouchers);
   }
 
-  getRangeDownloadFilename(fromDate: string, toDate: string): string {
-    return `VALES-${fromDate}-a-${toDate}.pdf`;
+  async generateRangeExcel(
+    fromDate: string,
+    toDate: string,
+    warehouseId: string | undefined,
+    movementType: string | undefined,
+    userId: number,
+  ): Promise<Buffer> {
+    const vouchers = await this.getVouchersInRange(fromDate, toDate, warehouseId, movementType, userId);
+    return this.renderVouchersExcel(vouchers);
+  }
+
+  getRangeDownloadFilename(fromDate: string, toDate: string, format: 'pdf' | 'xlsx' = 'pdf'): string {
+    return `VALES-${fromDate}-a-${toDate}.${format}`;
   }
 
   private async getVouchersInRange(
@@ -130,6 +142,157 @@ export class StockMovementExportService {
       });
       doc.end();
     });
+  }
+
+  private async renderVouchersExcel(vouchers: StockMovement[][]): Promise<Buffer> {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'TEINCOMIN';
+    workbook.created = new Date();
+
+    const logoPath = this.findLogoPath();
+    const logoId = logoPath
+      ? workbook.addImage({ base64: readFileSync(logoPath).toString('base64'), extension: 'png' })
+      : undefined;
+    const borderColor = '252525';
+    const thinBorder = { style: 'thin' as const, color: { argb: `FF${borderColor}` } };
+    const grayFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFEDEDED' } };
+
+    vouchers.forEach((movements, voucherIndex) => {
+      const selected = movements[0];
+      const safeName = this.getVoucherCode(selected).replace(/[\\/*?:\[\]]/g, '-').slice(0, 31) || `Vale-${voucherIndex + 1}`;
+      const worksheet = workbook.addWorksheet(safeName, {
+        pageSetup: {
+          orientation: 'landscape',
+          paperSize: 9,
+          fitToPage: true,
+          fitToWidth: 1,
+          fitToHeight: 1,
+          horizontalCentered: true,
+          margins: { left: 0.15, right: 0.15, top: 0.2, bottom: 0.2, header: 0, footer: 0 },
+        },
+      });
+      worksheet.views = [{ showGridLines: false }];
+      worksheet.columns = [
+        { width: 7 }, { width: 13 },
+        { width: 13 }, { width: 13 }, { width: 13 }, { width: 13 }, { width: 13 }, { width: 13 }, { width: 13 }, { width: 13 },
+        { width: 10 }, { width: 7 }, { width: 7 }, { width: 7 }, { width: 7 }, { width: 7 },
+      ];
+
+      const box = (
+        startRow: number,
+        startColumn: number,
+        endRow: number,
+        endColumn: number,
+        value: string,
+        options: { bold?: boolean; size?: number; fill?: boolean; horizontal?: 'left' | 'center' | 'right' } = {},
+      ) => {
+        if (startRow !== endRow || startColumn !== endColumn) {
+          worksheet.mergeCells(startRow, startColumn, endRow, endColumn);
+        }
+        const cell = worksheet.getCell(startRow, startColumn);
+        cell.value = value;
+        cell.font = { name: 'Arial', size: options.size ?? 9, bold: options.bold ?? false, color: { argb: 'FF111111' } };
+        cell.alignment = { vertical: 'middle', horizontal: options.horizontal ?? 'left', wrapText: true };
+        if (options.fill) cell.fill = grayFill;
+        for (let row = startRow; row <= endRow; row += 1) {
+          for (let column = startColumn; column <= endColumn; column += 1) {
+            worksheet.getCell(row, column).border = {
+              top: thinBorder,
+              left: thinBorder,
+              bottom: thinBorder,
+              right: thinBorder,
+            };
+            if (options.fill) worksheet.getCell(row, column).fill = grayFill;
+          }
+        }
+      };
+
+      for (let row = 1; row <= 6; row += 1) worksheet.getRow(row).height = 19;
+      box(1, 1, 6, 3, logoId === undefined ? 'TEINCOMIN' : '', { bold: true, size: 18, horizontal: 'center' });
+      if (logoId !== undefined) {
+        worksheet.addImage(logoId, {
+          tl: { col: 0.1, row: 0.1 },
+          ext: { width: 220, height: 115 },
+        });
+      }
+      box(1, 4, 1, 10, 'FORMULARIO', { bold: true, size: 11, fill: true, horizontal: 'center' });
+      box(2, 4, 6, 10, selected.voucherPrefix === 'E'
+        ? 'VALE DE ENTRADA - ALMACÉN'
+        : selected.voucherPrefix === 'S'
+          ? 'VALE DE SALIDA - ALMACÉN'
+          : 'COMPROBANTE DE MOVIMIENTO', { bold: true, size: 15, horizontal: 'center' });
+      box(1, 11, 1, 16, 'CÓDIGO: FO-LO-012', { bold: true, size: 8 });
+      box(2, 11, 2, 16, 'VERSIÓN: 00', { bold: true, size: 8 });
+      box(3, 11, 3, 16, 'FECHA: 19/01/2023', { bold: true, size: 8 });
+      box(4, 11, 6, 12, 'ELABORÓ\nALO', { bold: true, size: 8, horizontal: 'center' });
+      box(4, 13, 6, 14, 'REVISÓ\nADM', { bold: true, size: 8, horizontal: 'center' });
+      box(4, 15, 6, 16, 'APROBÓ\nGG', { bold: true, size: 8, horizontal: 'center' });
+
+      box(7, 1, 7, 2, 'SOLICITANTE:', { bold: true, fill: true });
+      box(7, 3, 7, 10, selected.voucherPersonnel || '');
+      box(7, 11, 7, 12, 'FECHA:', { bold: true, fill: true });
+      box(7, 13, 7, 16, this.formatDate(selected.voucherDate ?? selected.createdAt));
+      box(8, 1, 8, 2, 'GUARDIA:', { bold: true, fill: true });
+      box(8, 3, 8, 10, selected.voucherShift || '');
+      box(8, 11, 8, 12, 'N°:', { bold: true, fill: true });
+      box(8, 13, 8, 16, this.getVoucherCode(selected), { bold: true });
+      box(9, 1, 9, 2, selected.voucherPrefix === 'E' ? 'MOTIVO DE ENTRADA:' : selected.voucherPrefix === 'S' ? 'MOTIVO DE SALIDA:' : 'MOTIVO:', { bold: true, fill: true });
+      box(9, 3, 9, 16, selected.reason || '');
+
+      const headerRow = 10;
+      const headings = [
+        [headerRow, 1, headerRow, 1, 'ITEM'],
+        [headerRow, 2, headerRow, 2, 'CÓDIGO'],
+        [headerRow, 3, headerRow, 10, 'DESCRIPCIÓN DEL MATERIAL'],
+        [headerRow, 11, headerRow, 11, 'UND'],
+        [headerRow, 12, headerRow, 16, 'CANTIDAD'],
+      ] as const;
+      headings.forEach(([startRow, startColumn, endRow, endColumn, label]) => {
+        box(startRow, startColumn, endRow, endColumn, label, { bold: true, size: 8, fill: true, horizontal: 'center' });
+      });
+      worksheet.getRow(headerRow).height = 26;
+
+      const lineCount = Math.max(8, movements.length);
+      for (let index = 0; index < lineCount; index += 1) {
+        const row = headerRow + index + 1;
+        const movement = movements[index];
+        const product = movement ? this.getProduct(movement) : undefined;
+        worksheet.getRow(row).height = 20;
+        box(row, 1, row, 1, String(index + 1), { horizontal: 'center' });
+        box(row, 2, row, 2, product?.sku || '');
+        box(row, 3, row, 10, product?.name || '');
+        box(row, 11, row, 11, product?.unit || '', { horizontal: 'center' });
+        box(row, 12, row, 16, movement ? String(movement.quantity) : '', { horizontal: 'center' });
+      }
+
+      const observationRow = headerRow + lineCount + 1;
+      worksheet.getRow(observationRow).height = 24;
+      worksheet.getRow(observationRow + 1).height = 24;
+      box(observationRow, 1, observationRow + 1, 2, 'OBSERVACIÓN:', { bold: true, fill: true });
+      box(observationRow, 3, observationRow + 1, 16, selected.voucherComments || '');
+
+      const signatureTop = observationRow + 2;
+      const signatures = [
+        [1, 5, `ENTREGÓ: ${selected.deliveredBy || ''}`],
+        [6, 11, `JEFE / ENCARGADO DE ÁREA (OPCIONAL): ${selected.areaManager || ''}`],
+        [12, 16, `RECIBIÓ: ${selected.receivedBy || ''}`],
+      ] as const;
+      for (let row = signatureTop; row < signatureTop + 3; row += 1) {
+        worksheet.getRow(row).height = 19;
+      }
+      signatures.forEach(([startColumn, endColumn, label]) => {
+        box(signatureTop, startColumn, signatureTop + 2, endColumn, '');
+        box(signatureTop + 3, startColumn, signatureTop + 3, endColumn, label, { size: 8, horizontal: 'center' });
+      });
+      worksheet.getRow(signatureTop + 3).height = 22;
+
+      worksheet.pageSetup.printArea = `A1:P${signatureTop + 3}`;
+      worksheet.pageSetup.fitToPage = true;
+      worksheet.pageSetup.fitToWidth = 1;
+      worksheet.pageSetup.fitToHeight = 1;
+    });
+
+    return Buffer.from(await workbook.xlsx.writeBuffer());
   }
 
   private drawVoucher(doc: PDFKit.PDFDocument, movements: StockMovement[]): void {

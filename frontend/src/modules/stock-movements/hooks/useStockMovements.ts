@@ -100,11 +100,13 @@ export function useDownloadStockMovementVouchers() {
       toDate: string;
       warehouseId?: number;
       movementType?: string;
+      format: "pdf" | "xlsx";
     }) => stockMovementService.downloadVouchers(
       params.fromDate,
       params.toDate,
       params.warehouseId,
       params.movementType,
+      params.format,
     ),
   });
 }

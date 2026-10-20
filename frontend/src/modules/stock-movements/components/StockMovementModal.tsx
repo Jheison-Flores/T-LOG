@@ -101,7 +101,14 @@ export function StockMovementModal({
   onClose,
 }: Props) {
   const { user } = useAuth();
-  const sessionWarehouseId = user?.role.code === "ADMIN" ? undefined : user?.warehouse?.id;
+  const sessionWarehouse = user?.warehouse;
+  const isCentralWarehouse =
+    ["MAIN", "CENTRAL"].includes(sessionWarehouse?.type?.toUpperCase() ?? "") ||
+    sessionWarehouse?.code?.toUpperCase() === "LIMA" ||
+    sessionWarehouse?.city?.toUpperCase() === "LIMA" ||
+    sessionWarehouse?.name?.toUpperCase().includes("LIMA") === true;
+  const canChooseMovementWarehouse = user?.role.code === "ADMIN" || isCentralWarehouse;
+  const sessionWarehouseId = canChooseMovementWarehouse ? undefined : sessionWarehouse?.id;
 
   const createBatchMovement =
     useCreateBatchStockMovement();

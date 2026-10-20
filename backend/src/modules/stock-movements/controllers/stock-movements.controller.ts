@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -102,13 +103,22 @@ export class StockMovementsController {
     @Query('to') toDate: string,
     @Query('warehouseId') warehouseId: string | undefined,
     @Query('movementType') movementType: string | undefined,
+    @Query('format') format: string | undefined,
     @Res() response: Response,
   ): Promise<void> {
-    const buffer = await this.stockMovementExportService.generateRangePdf(fromDate, toDate, warehouseId, movementType, req.user.id);
+    const selectedFormat = format ?? 'pdf';
+    if (selectedFormat !== 'pdf' && selectedFormat !== 'xlsx') {
+      throw new BadRequestException('El formato de descarga debe ser PDF o Excel.');
+    }
+    const buffer = selectedFormat === 'xlsx'
+      ? await this.stockMovementExportService.generateRangeExcel(fromDate, toDate, warehouseId, movementType, req.user.id)
+      : await this.stockMovementExportService.generateRangePdf(fromDate, toDate, warehouseId, movementType, req.user.id);
 
     response.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${this.stockMovementExportService.getRangeDownloadFilename(fromDate, toDate)}"`,
+      'Content-Type': selectedFormat === 'xlsx'
+        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        : 'application/pdf',
+      'Content-Disposition': `attachment; filename="${this.stockMovementExportService.getRangeDownloadFilename(fromDate, toDate, selectedFormat)}"`,
       'Content-Length': buffer.length,
     });
     response.end(buffer);

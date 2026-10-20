@@ -67,11 +67,24 @@ export class InventoryService {
   }
 
   // ============================================================
-  // SABER SI TIENE ACCESO GLOBAL
+  // ACCESO GLOBAL
   // ============================================================
 
   private hasGlobalAccess(user: User): boolean {
     return user.role.code === 'ADMIN';
+  }
+
+  private canSelectWarehouse(user: User): boolean {
+    const warehouse = user.warehouse;
+    const isCentralWarehouse =
+      warehouse?.type === 'MAIN' ||
+      String(warehouse?.type ?? '').toUpperCase() === 'CENTRAL' ||
+      warehouse?.code?.toUpperCase() === 'LIMA' ||
+      warehouse?.city?.toUpperCase() === 'LIMA' ||
+      warehouse?.name?.toUpperCase().includes('LIMA') === true;
+
+    return this.hasGlobalAccess(user) ||
+      (user.role.code === 'LOGISTICS' && isCentralWarehouse);
   }
 
   // ============================================================
@@ -177,12 +190,11 @@ export class InventoryService {
     // SEGURIDAD POR WAREHOUSE
     // ==========================================================
 
-    if (this.hasGlobalAccess(user)) {
+    if (this.canSelectWarehouse(user)) {
       /*
-       * ADMIN sí puede filtrar manualmente
-       * por cualquier warehouse.
+       * ADMIN y LOGISTICS desde Lima pueden elegir una unidad
+       * para consultar stock en el formulario de movimientos.
        */
-
       if (search.warehouseId) {
         query.andWhere('warehouse.id = :warehouseId', {
           warehouseId: Number(search.warehouseId),

@@ -112,6 +112,7 @@ export function StockMovementsPage() {
   const [voucherMineId, setVoucherMineId] = useState("all");
   const [voucherMovementType, setVoucherMovementType] = useState<MovementType | "all">("all");
   const [downloadingRange, setDownloadingRange] = useState(false);
+  const [downloadingRangeFormat, setDownloadingRangeFormat] = useState<"pdf" | "xlsx" | null>(null);
   const [downloadError, setDownloadError] = useState("");
 
   const handleDownloadPdf = async (movement: StockMovement) => {
@@ -127,9 +128,10 @@ export function StockMovementsPage() {
     }
   };
 
-  const handleDownloadRange = async () => {
+  const handleDownloadRange = async (format: "pdf" | "xlsx") => {
     if (!voucherFromDate || !voucherToDate || voucherFromDate > voucherToDate) return;
     setDownloadingRange(true);
+    setDownloadingRangeFormat(format);
     setDownloadError("");
     try {
       await downloadVoucherRange.mutateAsync({
@@ -137,12 +139,14 @@ export function StockMovementsPage() {
         toDate: voucherToDate,
         warehouseId: voucherMineId === "all" ? undefined : Number(voucherMineId),
         movementType: voucherMovementType === "all" ? undefined : voucherMovementType,
+        format,
       });
     } catch (error) {
       console.error("Error descargando vales del periodo:", error);
       setDownloadError("No se pudieron descargar los vales con los filtros seleccionados.");
     } finally {
       setDownloadingRange(false);
+      setDownloadingRangeFormat(null);
     }
   };
 
@@ -378,14 +382,22 @@ export function StockMovementsPage() {
             </div>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-3">
             <Button
               type="button"
-              onClick={() => void handleDownloadRange()}
+              onClick={() => void handleDownloadRange("pdf")}
               disabled={!voucherFromDate || !voucherToDate || voucherFromDate > voucherToDate || downloadingRange}
             >
-              {downloadingRange ? <LoaderCircle size={17} className="animate-spin" /> : <Download size={17} />}
+              {downloadingRangeFormat === "pdf" ? <LoaderCircle size={17} className="animate-spin" /> : <Download size={17} />}
               Descargar PDF
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleDownloadRange("xlsx")}
+              disabled={!voucherFromDate || !voucherToDate || voucherFromDate > voucherToDate || downloadingRange}
+            >
+              {downloadingRangeFormat === "xlsx" ? <LoaderCircle size={17} className="animate-spin" /> : <Download size={17} />}
+              Descargar Excel
             </Button>
           </div>
           {voucherFromDate && voucherToDate && voucherFromDate > voucherToDate && (

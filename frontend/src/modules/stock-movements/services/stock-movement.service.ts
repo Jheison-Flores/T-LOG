@@ -94,10 +94,12 @@ class StockMovementService {
     toDate: string,
     warehouseId: number | undefined,
     movementType: string | undefined,
+    format: "pdf" | "xlsx",
   ): Promise<void> {
     const params = new URLSearchParams({ from: fromDate, to: toDate });
     if (warehouseId) params.set("warehouseId", String(warehouseId));
     if (movementType) params.set("movementType", movementType);
+    params.set("format", format);
     const response = await api.get(
       `/stock-movements/export/vouchers?${params.toString()}`,
       { responseType: "blob" },
@@ -105,7 +107,7 @@ class StockMovementService {
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `VALES-${fromDate}-a-${toDate}${warehouseId ? `-ALMACEN-${warehouseId}` : ""}${movementType ? `-${movementType}` : ""}.pdf`;
+    anchor.download = `VALES-${fromDate}-a-${toDate}${warehouseId ? `-ALMACEN-${warehouseId}` : ""}${movementType ? `-${movementType}` : ""}.${format}`;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();

@@ -89,11 +89,22 @@ export class StockMovementsService {
   }
 
   // ============================================================
-  // ACCESO GLOBAL
+  // ALCANCE GLOBAL DE MOVIMIENTOS
+  // ADMIN opera en todas las unidades. LOGISTICS en Lima puede
+  // seleccionar la unidad desde la que necesita registrar el movimiento.
   // ============================================================
 
   private hasGlobalAccess(user: User): boolean {
-    return user.role.code === 'ADMIN';
+    const warehouse = user.warehouse;
+    const isCentralWarehouse =
+      warehouse?.type === 'MAIN' ||
+      String(warehouse?.type ?? '').toUpperCase() === 'CENTRAL' ||
+      warehouse?.code?.toUpperCase() === 'LIMA' ||
+      warehouse?.city?.toUpperCase() === 'LIMA' ||
+      warehouse?.name?.toUpperCase().includes('LIMA') === true;
+
+    return user.role.code === 'ADMIN' ||
+      (user.role.code === 'LOGISTICS' && isCentralWarehouse);
   }
 
   // ============================================================
