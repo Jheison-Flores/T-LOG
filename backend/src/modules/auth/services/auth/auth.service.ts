@@ -61,6 +61,7 @@ export class AuthService {
           code: user.role.code,
           name: user.role.name,
         },
+        warehouse: user.warehouse ?? null,
       },
     };
   }
