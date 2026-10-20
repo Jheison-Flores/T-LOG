@@ -103,11 +103,12 @@ export function StockMovementModal({
   const { user } = useAuth();
   const sessionWarehouse = user?.warehouse;
   const isCentralWarehouse =
-    ["MAIN", "CENTRAL"].includes(sessionWarehouse?.type?.toUpperCase() ?? "") ||
-    sessionWarehouse?.code?.toUpperCase() === "LIMA" ||
-    sessionWarehouse?.city?.toUpperCase() === "LIMA" ||
-    sessionWarehouse?.name?.toUpperCase().includes("LIMA") === true;
-  const canChooseMovementWarehouse = user?.role.code === "ADMIN" || isCentralWarehouse;
+    sessionWarehouse?.code?.trim().toUpperCase() === "LIMA" ||
+    sessionWarehouse?.city?.trim().toUpperCase().includes("LIMA") === true ||
+    sessionWarehouse?.name?.trim().toUpperCase().includes("LIMA") === true;
+  const canChooseMovementWarehouse =
+    user?.role.code === "ADMIN" ||
+    (user?.role.code === "LOGISTICS" && isCentralWarehouse);
   const sessionWarehouseId = canChooseMovementWarehouse ? undefined : sessionWarehouse?.id;
 
   const createBatchMovement =
@@ -1019,9 +1020,9 @@ export function StockMovementModal({
               }
             </label>
 
-            {sessionWarehouseId ? (
+            {!canChooseMovementWarehouse ? (
               <div className="w-full rounded-lg border border-gray-300 bg-gray-100 p-3 text-gray-700">
-                {user?.warehouse?.name ?? activeWarehouses.find((warehouse) => warehouse.id === sessionWarehouseId)?.name ?? "Almacén de tu sesión"}
+                {user?.warehouse?.name ?? activeWarehouses.find((warehouse) => warehouse.id === sessionWarehouseId)?.name ?? "Sede no asignada"}
               </div>
             ) : <select
               value={
@@ -1089,9 +1090,9 @@ export function StockMovementModal({
                 Almacén origen *
               </label>
 
-              {sessionWarehouseId ? (
+              {!canChooseMovementWarehouse ? (
                 <div className="w-full rounded-lg border border-gray-300 bg-gray-100 p-3 text-gray-700">
-                  {user?.warehouse?.name ?? activeWarehouses.find((warehouse) => warehouse.id === sessionWarehouseId)?.name ?? "Almacén de tu sesión"}
+                  {user?.warehouse?.name ?? activeWarehouses.find((warehouse) => warehouse.id === sessionWarehouseId)?.name ?? "Sede no asignada"}
                 </div>
               ) : <select
                 value={

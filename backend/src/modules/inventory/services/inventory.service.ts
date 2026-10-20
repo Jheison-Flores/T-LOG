@@ -77,11 +77,9 @@ export class InventoryService {
   private canSelectWarehouse(user: User): boolean {
     const warehouse = user.warehouse;
     const isCentralWarehouse =
-      warehouse?.type === 'MAIN' ||
-      String(warehouse?.type ?? '').toUpperCase() === 'CENTRAL' ||
-      warehouse?.code?.toUpperCase() === 'LIMA' ||
-      warehouse?.city?.toUpperCase() === 'LIMA' ||
-      warehouse?.name?.toUpperCase().includes('LIMA') === true;
+      warehouse?.code?.trim().toUpperCase() === 'LIMA' ||
+      warehouse?.city?.trim().toUpperCase().includes('LIMA') === true ||
+      warehouse?.name?.trim().toUpperCase().includes('LIMA') === true;
 
     return this.hasGlobalAccess(user) ||
       (user.role.code === 'LOGISTICS' && isCentralWarehouse);
