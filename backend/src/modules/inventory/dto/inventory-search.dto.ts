@@ -16,6 +16,11 @@ export class InventorySearchDto {
   warehouseId?: number;
 
   @IsOptional()
+  @IsInt()
+  @Min(1)
+  categoryId?: number;
+
+  @IsOptional()
   @IsString()
   stockStatus?: 'ALL' | 'NORMAL' | 'LOW' | 'OUT';
 }

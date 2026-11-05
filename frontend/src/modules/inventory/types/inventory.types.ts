@@ -50,5 +50,6 @@ export interface InventorySearchParams {
   search?: string;
   productId?: number;
   warehouseId?: number;
+  categoryId?: number;
   stockStatus?: StockStatus;
 }

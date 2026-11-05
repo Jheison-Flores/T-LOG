@@ -28,6 +28,21 @@ class InventoryService {
 
     return response.data;
   }
+
+  async downloadExcel(params: InventorySearchParams): Promise<void> {
+    const response = await api.get<Blob>('/inventory/export', {
+      params,
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(new Blob([response.data]));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'INVENTARIO.xlsx';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
 }
 
 export const inventoryService =

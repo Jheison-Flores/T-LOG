@@ -6,9 +6,11 @@ import {
   Query,
   UseGuards,
   Req,
+  Res,
 } from '@nestjs/common';
 
 import { Request as ExpressRequest } from 'express';
+import type { Response } from 'express';
 
 import { InventoryService } from '../services/inventory.service';
 
@@ -47,6 +49,22 @@ export class InventoryController {
     search: InventorySearchDto,
   ) {
     return this.inventoryService.findAll(search, req.user.id);
+  }
+
+  @Get('export')
+  @Roles('ADMIN', 'LOGISTICS')
+  async exportExcel(
+    @Req() req: RequestWithUser,
+    @Query() search: InventorySearchDto,
+    @Res() response: Response,
+  ): Promise<void> {
+    const buffer = await this.inventoryService.generateExcel(search, req.user.id);
+    response.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': 'attachment; filename="INVENTARIO.xlsx"',
+      'Content-Length': buffer.length,
+    });
+    response.end(buffer);
   }
 
   // ============================================================

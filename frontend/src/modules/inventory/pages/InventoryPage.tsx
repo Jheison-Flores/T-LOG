@@ -1,8 +1,11 @@
 import {
+  useMemo,
   useState,
 } from "react";
 
 import {
+  Download,
+  LoaderCircle,
   RefreshCw,
   Search,
 } from "lucide-react";
@@ -15,6 +18,7 @@ import {
   useWarehouses,
 } from "@/modules/warehouses/hooks/useWarehouses";
 import { useAuth } from "@/modules/auth/contexts/AuthContexts";
+import { useCategories } from "@/modules/categories/hooks/useCategories";
 
 import {
   InventoryStats,
@@ -23,6 +27,7 @@ import {
 import {
   InventoryTable,
 } from "../components/InventoryTable";
+import { inventoryService } from "../services/inventory.service";
 
 import type {
   StockStatus,
@@ -31,6 +36,14 @@ import type {
 export function InventoryPage() {
   const { user } = useAuth();
   const isAdmin = user?.role.code === "ADMIN";
+  const sessionWarehouse = user?.warehouse;
+  const isCentralWarehouse =
+    sessionWarehouse?.code?.trim().toUpperCase() === "LIMA" ||
+    sessionWarehouse?.city?.trim().toUpperCase().includes("LIMA") === true ||
+    sessionWarehouse?.name?.trim().toUpperCase().includes("LIMA") === true;
+  const canChooseWarehouse =
+    isAdmin ||
+    (user?.role.code === "LOGISTICS" && isCentralWarehouse);
 
   const [search, setSearch] =
     useState("");
@@ -40,12 +53,17 @@ export function InventoryPage() {
       undefined,
     );
 
-  const selectedWarehouseId = isAdmin
+  const selectedWarehouseId = canChooseWarehouse
     ? warehouseId
     : user?.warehouse?.id;
 
+  const [categoryId, setCategoryId] =
+    useState<number | undefined>(undefined);
+
   const [stockStatus, setStockStatus] =
     useState<StockStatus>("ALL");
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
 
   // ============================================================
   // INVENTARIO
@@ -71,9 +89,49 @@ export function InventoryPage() {
 
     warehouseId: selectedWarehouseId,
 
+    categoryId,
+
     stockStatus,
 
   });
+
+  // Mantiene la tabla y sus indicadores sincronizados inmediatamente con
+  // todos los filtros activos, aunque la respuesta de la API esté en caché.
+  const visibleInventory = useMemo(() => {
+    const normalizedSearch = search.trim().toLocaleLowerCase();
+
+    return inventory.filter((item) => {
+      const quantity = Number(item.quantity ?? 0);
+      const minimumStock = Number(item.product?.minimumStock ?? 0);
+
+      if (selectedWarehouseId && item.warehouse?.id !== selectedWarehouseId) {
+        return false;
+      }
+
+      if (categoryId && item.product?.category?.id !== categoryId) {
+        return false;
+      }
+
+      if (stockStatus === "OUT" && quantity !== 0) return false;
+      if (stockStatus === "LOW" && !(quantity > 0 && quantity <= minimumStock)) return false;
+      if (stockStatus === "NORMAL" && !(quantity > minimumStock)) return false;
+
+      if (normalizedSearch) {
+        const searchableValues = [
+          item.product?.name,
+          item.product?.sku,
+          item.product?.internalCode,
+        ];
+        const matchesSearch = searchableValues.some((value) =>
+          value?.toLocaleLowerCase().includes(normalizedSearch),
+        );
+
+        if (!matchesSearch) return false;
+      }
+
+      return true;
+    });
+  }, [inventory, search, selectedWarehouseId, categoryId, stockStatus]);
 
   // ============================================================
   // ALMACENES
@@ -87,6 +145,8 @@ export function InventoryPage() {
     isError: warehousesError,
 
   } = useWarehouses();
+
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
 
   // ============================================================
   // CAMBIAR ALMACÉN
@@ -123,6 +183,24 @@ export function InventoryPage() {
     );
   };
 
+  const handleDownloadExcel = async () => {
+    setIsExporting(true);
+    setExportError("");
+    try {
+      await inventoryService.downloadExcel({
+        search: search.trim() || undefined,
+        warehouseId: selectedWarehouseId,
+        categoryId,
+        stockStatus,
+      });
+    } catch (downloadError) {
+      console.error("Error descargando inventario:", downloadError);
+      setExportError("No se pudo descargar el inventario con los filtros seleccionados.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // ============================================================
   // LIMPIAR FILTROS
   // ============================================================
@@ -134,6 +212,8 @@ export function InventoryPage() {
     setWarehouseId(
       undefined,
     );
+
+    setCategoryId(undefined);
 
     setStockStatus(
       "ALL",
@@ -169,7 +249,7 @@ export function InventoryPage() {
         !isError && (
 
           <InventoryStats
-            inventory={inventory}
+            inventory={visibleInventory}
           />
 
         )}
@@ -181,7 +261,7 @@ export function InventoryPage() {
 
       <div className="bg-white rounded-xl border border-gray-200 p-4">
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
 
 
           {/* ================================================== */}
@@ -218,7 +298,7 @@ export function InventoryPage() {
           {/* ALMACÉN */}
           {/* ================================================== */}
 
-          {isAdmin ? <select
+          {canChooseWarehouse ? <select
 
             value={
               warehouseId !== undefined
@@ -268,6 +348,18 @@ export function InventoryPage() {
               {user?.warehouse?.name ?? "Cargando almacén de la sesión..."}
             </div>
           )}
+
+          <select
+            value={categoryId !== undefined ? String(categoryId) : ""}
+            onChange={(event) => setCategoryId(Number(event.target.value) || undefined)}
+            disabled={categoriesLoading}
+            className="w-full border border-gray-300 rounded-lg px-4 py-3 bg-white outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 disabled:bg-gray-100 disabled:text-gray-400"
+          >
+            <option value="">Todas las categorías</option>
+            {categories.filter((category) => category.isActive).map((category) => (
+              <option key={category.id} value={category.id}>{category.name}</option>
+            ))}
+          </select>
 
 
           {/* ================================================== */}
@@ -328,7 +420,17 @@ export function InventoryPage() {
         {/* BOTONES */}
         {/* ================================================== */}
 
-        <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
+        <div className="flex flex-wrap justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
+
+          <button
+            type="button"
+            onClick={() => void handleDownloadExcel()}
+            disabled={isLoading || isFetching || isExporting}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-green-700 text-white font-medium hover:bg-green-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isExporting ? <LoaderCircle size={17} className="animate-spin" /> : <Download size={17} />}
+            {isExporting ? "Preparando Excel..." : "Descargar Excel"}
+          </button>
 
           <button
             type="button"
@@ -374,6 +476,8 @@ export function InventoryPage() {
           </button>
 
         </div>
+
+        {exportError && <p className="mt-3 text-sm text-red-600">{exportError}</p>}
 
       </div>
 
@@ -444,7 +548,7 @@ export function InventoryPage() {
         !isError && (
 
           <InventoryTable
-            inventory={inventory}
+            inventory={visibleInventory}
           />
 
         )}
