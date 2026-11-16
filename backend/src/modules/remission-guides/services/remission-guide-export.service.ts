@@ -276,7 +276,7 @@ export class RemissionGuideExportService {
 
       const headerY = 18;
 
-      const headerHeight = 82;
+      const headerHeight = 70;
 
       const logoWidth = 175;
 
@@ -294,15 +294,15 @@ export class RemissionGuideExportService {
 
       if (logoPath) {
         try {
-          doc.image(logoPath, LEFT + 14, headerY + 18, {
-            fit: [logoWidth - 28, 52],
+          doc.image(logoPath, LEFT + 14, headerY + 12, {
+            fit: [logoWidth - 28, 46],
 
             align: 'center',
 
             valign: 'center',
           });
         } catch {
-          text('TEINCOMIN', LEFT + 10, headerY + 31, logoWidth - 20, {
+          text('TEINCOMIN', LEFT + 10, headerY + 25, logoWidth - 20, {
             bold: true,
 
             size: 18,
@@ -313,7 +313,7 @@ export class RemissionGuideExportService {
           });
         }
       } else {
-        text('TEINCOMIN', LEFT + 10, headerY + 30, logoWidth - 20, {
+        text('TEINCOMIN', LEFT + 10, headerY + 24, logoWidth - 20, {
           bold: true,
 
           size: 18,
@@ -332,7 +332,7 @@ export class RemissionGuideExportService {
 
       border(companyX, headerY, companyWidth, headerHeight);
 
-      let companyY = headerY + 6;
+      let companyY = headerY + 5;
 
       text(
         settings.companyAddress || 'Car. Central Km 17 Mza. E Lote 1',
@@ -348,7 +348,7 @@ export class RemissionGuideExportService {
         },
       );
 
-      companyY += 11;
+      companyY += 9;
 
       text(
         'Asc. Asociación Praderas de Pariachi',
@@ -364,7 +364,7 @@ export class RemissionGuideExportService {
         },
       );
 
-      companyY += 11;
+      companyY += 9;
 
       text('Ate - Lima - Lima', companyX + 4, companyY, companyWidth - 8, {
         bold: true,
@@ -374,7 +374,7 @@ export class RemissionGuideExportService {
         align: 'center',
       });
 
-      companyY += 11;
+      companyY += 9;
 
       text(
         `Telf.: ${settings.companyPhone || '7787661'}`,
@@ -388,7 +388,7 @@ export class RemissionGuideExportService {
         },
       );
 
-      companyY += 10;
+      companyY += 9;
 
       text(
         `E-mail: ${settings.companyEmail || 'teincomin@gmail.com'}`,
@@ -402,7 +402,7 @@ export class RemissionGuideExportService {
         },
       );
 
-      companyY += 10;
+      companyY += 9;
 
       text('www.teincomin.com', companyX + 4, companyY, companyWidth - 8, {
         size: 6,
@@ -432,12 +432,12 @@ export class RemissionGuideExportService {
         },
       );
 
-      fillRect(documentX, headerY + 31, documentWidth, 17, this.ORANGE);
+      fillRect(documentX, headerY + 26, documentWidth, 15, this.ORANGE);
 
       text(
         'GUÍA DE REMISIÓN - REMITENTE',
         documentX + 3,
-        headerY + 36,
+        headerY + 30,
         documentWidth - 6,
         {
           bold: true,
@@ -453,7 +453,7 @@ export class RemissionGuideExportService {
       text(
         `${guide.series} - N° ${guide.guideNumber}`,
         documentX + 4,
-        headerY + 59,
+        headerY + 51,
         documentWidth - 8,
         {
           bold: true,
@@ -479,7 +479,7 @@ export class RemissionGuideExportService {
       const rightX = LEFT + leftHalf + gap;
 
       // Fecha emisión
-      border(LEFT, y, leftHalf, 18);
+      border(LEFT, y, leftHalf, 16);
 
       text('Fecha de Emisión:', LEFT + 5, y + 5, 73, {
         size: 6.2,
@@ -491,13 +491,13 @@ export class RemissionGuideExportService {
         color: this.BLUE_TEXT,
       });
 
-      y += 22;
+      y += 19;
 
       // ======================================================
       // PUNTO PARTIDA / LLEGADA
       // ======================================================
 
-      border(LEFT, y, leftHalf, 31);
+      border(LEFT, y, leftHalf, 28);
 
       text('Punto de partida:', LEFT + 5, y + 8, 78, {
         size: 6.2,
@@ -509,7 +509,7 @@ export class RemissionGuideExportService {
         color: this.BLUE_TEXT,
       });
 
-      border(rightX, y, rightHalf, 31);
+      border(rightX, y, rightHalf, 28);
 
       text('Punto de Llegada:', rightX + 5, y + 8, 82, {
         size: 6.2,
@@ -521,13 +521,13 @@ export class RemissionGuideExportService {
         color: this.BLUE_TEXT,
       });
 
-      y += 35;
+      y += 31;
 
       // ======================================================
       // FECHA TRASLADO / RAZÓN SOCIAL
       // ======================================================
 
-      border(LEFT, y, leftHalf, 26);
+      border(LEFT, y, leftHalf, 23);
 
       text('Fecha de inicio del Traslado:', LEFT + 5, y + 8, 120, {
         size: 6.1,
@@ -545,7 +545,7 @@ export class RemissionGuideExportService {
         },
       );
 
-      border(rightX, y, rightHalf, 26);
+      border(rightX, y, rightHalf, 23);
 
       text('Nombre o Razón Social:', rightX + 5, y + 8, 105, {
         size: 6.1,
@@ -557,13 +557,13 @@ export class RemissionGuideExportService {
         color: this.BLUE_TEXT,
       });
 
-      y += 26;
+      y += 23;
 
       // ======================================================
       // COSTO / RUC
       // ======================================================
 
-      border(LEFT, y, leftHalf, 22);
+      border(LEFT, y, leftHalf, 20);
 
       text('COSTO MÍNIMO:', LEFT + 5, y + 7, 80, {
         bold: true,
@@ -601,7 +601,7 @@ export class RemissionGuideExportService {
         },
       );
 
-      border(rightX, y, rightHalf, 22);
+      border(rightX, y, rightHalf, 20);
 
       text('NÚMERO DE R.U.C.:', rightX + 5, y + 7, 90, {
         size: 6.1,
@@ -629,19 +629,19 @@ export class RemissionGuideExportService {
         },
       );
 
-      y += 22;
+      y += 20;
 
       // ======================================================
       // TRANSPORTE
       // ======================================================
 
-      const transportHeaderHeight = 17;
+      const transportHeaderHeight = 15;
 
       fillRect(LEFT, y, leftHalf, transportHeaderHeight, '#F4F4F4');
 
       border(LEFT, y, leftHalf, transportHeaderHeight);
 
-      text('UNIDAD DE TRANSPORTE Y CONDUCTOR', LEFT + 2, y + 5, leftHalf - 4, {
+      text('UNIDAD DE TRANSPORTE Y CONDUCTOR', LEFT + 2, y + 4, leftHalf - 4, {
         bold: true,
 
         size: 6.3,
@@ -653,7 +653,7 @@ export class RemissionGuideExportService {
 
       border(rightX, y, rightHalf, transportHeaderHeight);
 
-      text('EMPRESA DE TRANSPORTES', rightX + 2, y + 5, rightHalf - 4, {
+      text('EMPRESA DE TRANSPORTES', rightX + 2, y + 4, rightHalf - 4, {
         bold: true,
 
         size: 6.3,
@@ -667,7 +667,7 @@ export class RemissionGuideExportService {
       // FILA MARCA / TRANSPORTISTA
       // ======================================================
 
-      border(LEFT, y, leftHalf, 18);
+      border(LEFT, y, leftHalf, 16);
 
       text('MARCA Y N° DE PLACA:', LEFT + 5, y + 5, 103, {
         bold: true,
@@ -687,7 +687,7 @@ export class RemissionGuideExportService {
         },
       );
 
-      border(rightX, y, rightHalf, 18);
+      border(rightX, y, rightHalf, 16);
 
       text('Nombre o Razón Social:', rightX + 5, y + 5, 105, {
         size: 5.9,
@@ -705,13 +705,13 @@ export class RemissionGuideExportService {
         },
       );
 
-      y += 18;
+      y += 16;
 
       // ======================================================
       // CONSTANCIA / RUC TRANSPORTISTA
       // ======================================================
 
-      border(LEFT, y, leftHalf, 18);
+      border(LEFT, y, leftHalf, 16);
 
       text('N° DE CONSTANCIA DE INSCRIPCIÓN:', LEFT + 5, y + 5, 150, {
         bold: true,
@@ -731,7 +731,7 @@ export class RemissionGuideExportService {
         },
       );
 
-      border(rightX, y, rightHalf, 18);
+      border(rightX, y, rightHalf, 16);
 
       text('NÚMERO DE R.U.C.:', rightX + 5, y + 5, 90, {
         size: 5.9,
@@ -749,13 +749,13 @@ export class RemissionGuideExportService {
         },
       );
 
-      y += 18;
+      y += 16;
 
       // ======================================================
       // LICENCIA
       // ======================================================
 
-      border(LEFT, y, leftHalf, 18);
+      border(LEFT, y, leftHalf, 16);
 
       text('N° DE LICENCIA DE CONDUCTOR:', LEFT + 5, y + 5, 140, {
         bold: true,
@@ -769,9 +769,9 @@ export class RemissionGuideExportService {
         color: this.BLUE_TEXT,
       });
 
-      border(rightX, y, rightHalf, 18);
+      border(rightX, y, rightHalf, 16);
 
-      y += 21;
+      y += 18;
 
       // ======================================================
       // TABLA PRODUCTOS
@@ -850,7 +850,7 @@ export class RemissionGuideExportService {
 
       const tableBodyTop = y;
 
-      const tableBodyBottom = 720;
+      const tableBodyBottom = 735;
 
       const bodyHeight = tableBodyBottom - tableBodyTop;
 
@@ -877,14 +877,18 @@ export class RemissionGuideExportService {
       // DETALLES
       // ======================================================
 
-      let detailY = tableBodyTop + 5;
+      let detailY = tableBodyTop + 4;
+
+      const detailRowHeight = 10.5;
 
       guide.details.forEach((detail, index) => {
-        if (detailY > tableBodyBottom - 15) {
+        if (detailY > tableBodyBottom - 12) {
           return;
         }
 
         text(String(index + 1), LEFT + 2, detailY, itemW - 4, {
+          bold: true,
+
           size: 6,
 
           align: 'center',
@@ -898,6 +902,8 @@ export class RemissionGuideExportService {
           detailY,
           quantityW - 4,
           {
+            bold: true,
+
             size: 6,
 
             align: 'center',
@@ -914,6 +920,8 @@ export class RemissionGuideExportService {
           detailY,
           descriptionW - 8,
           {
+            bold: true,
+
             size: 6,
 
             color: this.BLUE_TEXT,
@@ -926,6 +934,8 @@ export class RemissionGuideExportService {
           detailY,
           unitW - 4,
           {
+            bold: true,
+
             size: 6,
 
             align: 'center',
@@ -942,6 +952,8 @@ export class RemissionGuideExportService {
           detailY,
           weightW - 4,
           {
+            bold: true,
+
             size: 6,
 
             align: 'center',
@@ -950,7 +962,7 @@ export class RemissionGuideExportService {
           },
         );
 
-        detailY += 13;
+        detailY += detailRowHeight;
       });
 
       // ======================================================
@@ -1091,7 +1103,7 @@ export class RemissionGuideExportService {
         .text(
           `${settings.systemName || 'T-LOG'} · ${guide.fullNumber}`,
           LEFT,
-          PAGE_HEIGHT - 15,
+          PAGE_HEIGHT - 22,
           {
             width: WIDTH,
 
