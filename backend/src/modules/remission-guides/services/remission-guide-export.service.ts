@@ -879,7 +879,7 @@ export class RemissionGuideExportService {
 
       let detailY = tableBodyTop + 4;
 
-      const detailRowHeight = 10.5;
+      const detailRowHeight = 12;
 
       guide.details.forEach((detail, index) => {
         if (detailY > tableBodyBottom - 12) {
@@ -922,7 +922,7 @@ export class RemissionGuideExportService {
           {
             bold: true,
 
-            size: 6,
+            size: 7,
 
             color: this.BLUE_TEXT,
           },
